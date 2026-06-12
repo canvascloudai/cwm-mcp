@@ -174,16 +174,20 @@ server.tool(
 );
 server.tool(
   "rl_step",
-  "Execute one RL action in a training environment and receive the next observation, reward, done flag, and diagnostic info. When done=true, call rl_reset to start a new episode. Requires CWM_API_KEY with write scope.\n\nAction types:\n- scale_out: add compute instances\n- scale_in: remove compute instances\n- add_resource: add a new resource node\n- remove_resource: remove a resource node\n- adjust_threshold: change autoscaling CPU/latency/throughput thresholds",
+  "Execute one RL action in a training environment and receive the next observation, reward, done flag, and diagnostic info. When done=true, call rl_reset to start a new episode. Requires CWM_API_KEY with write scope.\n\nAction types:\n- scale_out: add compute instances\n- scale_in: remove compute instances\n- add_resource: add a new resource node\n- remove_resource: remove a resource node\n- adjust_threshold: change autoscaling CPU/latency/throughput thresholds\n- set_recovery_policy: set per-resource recovery thresholds (requires resourceId + criticalCpuThreshold/criticalSteps/warningCpuThreshold/warningSteps)",
   {
     environmentId: z.string().describe("ID of the RL environment (from rl_create_environment)"),
-    actionType: z.enum(["adjust_threshold", "scale_out", "scale_in", "add_resource", "remove_resource"]).describe("Type of autoscaling action to apply"),
-    resourceId: z.string().optional().describe("ID of the specific resource to target. Required for add_resource and remove_resource."),
+    actionType: z.enum(["adjust_threshold", "scale_out", "scale_in", "add_resource", "remove_resource", "set_recovery_policy"]).describe("Type of autoscaling action to apply"),
+    resourceId: z.string().optional().describe("ID of the specific resource to target. Required for add_resource, remove_resource, and set_recovery_policy."),
     instanceCount: z.number().int().min(1).optional().describe("Number of instances to add or remove (for scale_out / scale_in)"),
     cpuThreshold: z.number().min(0).max(100).optional().describe("New CPU scale-out threshold in percent (for adjust_threshold)"),
     latencyThreshold: z.number().min(0).optional().describe("New latency threshold in milliseconds (for adjust_threshold)"),
     resourceType: z.enum(["compute", "database", "storage", "network"]).optional().describe("Type of resource to add (for add_resource)"),
-    provider: z.enum(["aws", "gcp", "azure", "oci", "digitalocean"]).optional().describe("Cloud provider for the new resource (for add_resource)")
+    provider: z.enum(["aws", "gcp", "azure", "oci", "digitalocean"]).optional().describe("Cloud provider for the new resource (for add_resource)"),
+    criticalCpuThreshold: z.number().min(0).max(100).optional().describe("CPU % above which a resource is considered critical (for set_recovery_policy). Default 80."),
+    criticalSteps: z.number().int().min(1).optional().describe("Steps the resource must stay at critical CPU before recovery triggers (for set_recovery_policy). Default 4."),
+    warningCpuThreshold: z.number().min(0).max(100).optional().describe("CPU % above which a resource is considered in warning state (for set_recovery_policy). Default 70."),
+    warningSteps: z.number().int().min(1).optional().describe("Steps the resource must stay at warning CPU before recovery triggers (for set_recovery_policy). Default 3.")
   },
   async (args) => {
     try {
@@ -194,6 +198,14 @@ server.tool(
       if (args.latencyThreshold !== void 0) parameters.latencyThreshold = args.latencyThreshold;
       if (args.resourceType !== void 0) parameters.resourceType = args.resourceType;
       if (args.provider !== void 0) parameters.provider = args.provider;
+      if (args.criticalCpuThreshold !== void 0 || args.criticalSteps !== void 0 || args.warningCpuThreshold !== void 0 || args.warningSteps !== void 0) {
+        parameters.recoveryPolicy = {
+          criticalCpuThreshold: args.criticalCpuThreshold ?? 80,
+          criticalSteps: args.criticalSteps ?? 4,
+          warningCpuThreshold: args.warningCpuThreshold ?? 70,
+          warningSteps: args.warningSteps ?? 3
+        };
+      }
       const result = await apiCall(
         "POST",
         `/api/rl/environments/${args.environmentId}/step`,
