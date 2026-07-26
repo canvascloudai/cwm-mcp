@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// mcp-server/index.ts
+// index.ts
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -38,8 +38,31 @@ async function apiCall(method, path, body, requireAuth = false) {
 }
 var server = new McpServer({
   name: "cloud-world-model",
-  version: "1.0.0"
+  version: "1.1.0"
 });
+server.tool(
+  "get_api_spec",
+  "Return the location and format of the Cloud World Model OpenAPI specification. openapi_spec_url: /api-docs/openapi.json \u2014 fetch this path relative to the server base URL to retrieve the full machine-readable spec. openapi_spec_format: openapi3_json \u2014 the spec is an OpenAPI 3.0 document in JSON format. Invoking this tool resolves the absolute URL against the configured server base and includes a usage description. No API key required.",
+  {},
+  () => {
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(
+            {
+              openapi_spec_url: `${BASE_URL}/api-docs/openapi.json`,
+              openapi_spec_format: "openapi3_json",
+              description: "Fetch openapi_spec_url to retrieve the full OpenAPI 3.0 specification in JSON format. It documents every REST endpoint, request schema, response schema, and authentication requirement for this Cloud World Model instance."
+            },
+            null,
+            2
+          )
+        }
+      ]
+    };
+  }
+);
 server.tool(
   "create_simulation",
   "Create a new virtual cloud environment (simulation) with resources such as compute, database, storage, network, cache, queue, or kubernetes nodes. Returns the created simulation object including its id, which is required for subsequent calls. Requires CWM_API_KEY with write scope.",
@@ -145,7 +168,8 @@ server.tool(
     maxLatencyP95Ms: z.number().min(0).default(200).describe("SLA target: maximum P95 latency in milliseconds (default 200)"),
     maxErrorRatePercent: z.number().min(0).max(100).default(1).describe("SLA target: maximum acceptable error rate in percent (default 1)"),
     costBudgetPerHour: z.number().min(0).optional().describe("Optional cost budget in USD per simulated hour. Episodes that exceed this budget incur negative reward."),
-    enableFailures: z.boolean().default(false).describe("Whether to randomly inject failures during training episodes (default false)")
+    enableFailures: z.boolean().default(false).describe("Whether to randomly inject failures during training episodes (default false)"),
+    tickSeconds: z.number().int().min(1).default(3600).describe("Simulated seconds per environment tick (default 3600 = 1 hour). Controls the time-scale of cost and traffic patterns.")
   },
   async (args) => {
     try {
@@ -156,7 +180,8 @@ server.tool(
           maxLatencyP95: args.maxLatencyP95Ms,
           maxErrorRate: args.maxErrorRatePercent
         },
-        enableFailures: args.enableFailures
+        enableFailures: args.enableFailures,
+        tickSeconds: args.tickSeconds
       };
       if (args.targetTrafficPattern) episodeConfig.targetTrafficPattern = args.targetTrafficPattern;
       if (args.costBudgetPerHour !== void 0) episodeConfig.costBudgetPerHour = args.costBudgetPerHour;
@@ -184,6 +209,7 @@ server.tool(
     latencyThreshold: z.number().min(0).optional().describe("New latency threshold in milliseconds (for adjust_threshold)"),
     resourceType: z.enum(["compute", "database", "storage", "network"]).optional().describe("Type of resource to add (for add_resource)"),
     provider: z.enum(["aws", "gcp", "azure", "oci", "digitalocean"]).optional().describe("Cloud provider for the new resource (for add_resource)"),
+    tick_seconds: z.number().int().min(1).max(3600).optional().describe("Simulated seconds per step (1\u20133600). Overrides the environment default for this step only. Useful for warm-up phases (small values) vs. long-horizon training (large values)."),
     criticalCpuThreshold: z.number().min(0).max(100).optional().describe("CPU % above which a resource is considered critical (for set_recovery_policy). Default 80."),
     criticalSteps: z.number().int().min(1).optional().describe("Steps the resource must stay at critical CPU before recovery triggers (for set_recovery_policy). Default 4."),
     warningCpuThreshold: z.number().min(0).max(100).optional().describe("CPU % above which a resource is considered in warning state (for set_recovery_policy). Default 70."),
@@ -206,10 +232,12 @@ server.tool(
           warningSteps: args.warningSteps ?? 3
         };
       }
+      const body = { action: { type: args.actionType, parameters } };
+      if (args.tick_seconds !== void 0) body.tick_seconds = args.tick_seconds;
       const result = await apiCall(
         "POST",
         `/api/rl/environments/${args.environmentId}/step`,
-        { action: { type: args.actionType, parameters } },
+        body,
         true
       );
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
@@ -230,6 +258,62 @@ server.tool(
         "POST",
         `/api/rl/environments/${args.environmentId}/reset`,
         {},
+        true
+      );
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "rl_batch_step",
+  "Execute up to 30 RL actions in a single round-trip. More efficient than calling rl_step repeatedly when you have a predetermined action sequence. Returns an ordered array of step results (same shape as rl_step). Execution stops early if the episode ends (done=true). Requires CWM_API_KEY with write scope.\n\nAction types per step:\n- scale_out: add compute instances\n- scale_in: remove compute instances\n- add_resource: add a new resource node\n- remove_resource: remove a resource node\n- adjust_threshold: change autoscaling CPU/latency/throughput thresholds\n- set_recovery_policy: set per-resource recovery thresholds",
+  {
+    environmentId: z.string().describe("ID of the RL environment (from rl_create_environment)"),
+    steps: z.array(
+      z.object({
+        actionType: z.enum(["adjust_threshold", "scale_out", "scale_in", "add_resource", "remove_resource", "set_recovery_policy"]).describe("Type of autoscaling action to apply"),
+        resourceId: z.string().optional().describe("ID of the specific resource to target"),
+        instanceCount: z.number().int().min(1).optional().describe("Instances to add or remove (scale_out / scale_in)"),
+        cpuThreshold: z.number().min(0).max(100).optional().describe("New CPU scale-out threshold in percent (adjust_threshold)"),
+        latencyThreshold: z.number().min(0).optional().describe("New latency threshold in ms (adjust_threshold)"),
+        resourceType: z.enum(["compute", "database", "storage", "network"]).optional().describe("Resource type for add_resource"),
+        provider: z.enum(["aws", "gcp", "azure", "oci", "digitalocean"]).optional().describe("Cloud provider for add_resource"),
+        criticalCpuThreshold: z.number().min(0).max(100).optional().describe("Critical CPU % threshold (set_recovery_policy)"),
+        criticalSteps: z.number().int().min(1).optional().describe("Steps at critical before recovery triggers (set_recovery_policy)"),
+        warningCpuThreshold: z.number().min(0).max(100).optional().describe("Warning CPU % threshold (set_recovery_policy)"),
+        warningSteps: z.number().int().min(1).optional().describe("Steps at warning before recovery triggers (set_recovery_policy)"),
+        tick_seconds: z.number().int().min(1).max(3600).optional().describe("Simulated seconds for this step (overrides environment default)")
+      })
+    ).min(1).max(30).describe("Ordered list of step actions to execute (1\u201330)")
+  },
+  async (args) => {
+    try {
+      const steps = args.steps.map((s) => {
+        const parameters = {};
+        if (s.resourceId !== void 0) parameters.resourceId = s.resourceId;
+        if (s.instanceCount !== void 0) parameters.instanceCount = s.instanceCount;
+        if (s.cpuThreshold !== void 0) parameters.cpuThreshold = s.cpuThreshold;
+        if (s.latencyThreshold !== void 0) parameters.latencyThreshold = s.latencyThreshold;
+        if (s.resourceType !== void 0) parameters.resourceType = s.resourceType;
+        if (s.provider !== void 0) parameters.provider = s.provider;
+        if (s.criticalCpuThreshold !== void 0 || s.criticalSteps !== void 0 || s.warningCpuThreshold !== void 0 || s.warningSteps !== void 0) {
+          parameters.recoveryPolicy = {
+            criticalCpuThreshold: s.criticalCpuThreshold ?? 80,
+            criticalSteps: s.criticalSteps ?? 4,
+            warningCpuThreshold: s.warningCpuThreshold ?? 70,
+            warningSteps: s.warningSteps ?? 3
+          };
+        }
+        const step = { action: { type: s.actionType, parameters } };
+        if (s.tick_seconds !== void 0) step.tick_seconds = s.tick_seconds;
+        return step;
+      });
+      const result = await apiCall(
+        "POST",
+        `/api/rl/environments/${args.environmentId}/batch-step`,
+        { steps },
         true
       );
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
@@ -550,6 +634,527 @@ server.tool(
   async (args) => {
     try {
       const result = await apiCall("GET", `/api/analysis/jobs/${args.jobId}/recommendations`, void 0, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "prediction_optimize_thresholds",
+  "Submit a threshold optimization job: run a traffic forecast through the simulation engine and derive recommended CPU/latency scale-out and scale-in thresholds for each resource tier. Uses the same forecast format as prediction_validate. Returns a job ID immediately; poll prediction_job_status until completed, then call prediction_job_results to retrieve the recommended threshold table. Requires CWM_API_KEY with write scope.",
+  {
+    simulationId: z.string().describe("ID of the simulation to derive thresholds for"),
+    forecastName: z.string().describe("Human-readable name for this traffic forecast"),
+    forecastDescription: z.string().optional().describe("Optional description of the forecast scenario"),
+    dataPoints: z.array(
+      z.object({
+        timestamp: z.number().describe("Unix timestamp (seconds) for this data point"),
+        rps: z.number().describe("Requests per second at this point in time"),
+        label: z.string().optional().describe("Optional label such as 'morning peak' or 'flash sale'")
+      })
+    ).describe("Time-series traffic forecast data points"),
+    peakRPS: z.number().optional().describe("Peak RPS across the forecast window (computed automatically if omitted)"),
+    avgRPS: z.number().optional().describe("Average RPS across the forecast window (computed automatically if omitted)"),
+    testSteps: z.number().int().min(1).default(100).describe("Number of simulation steps to run during threshold search (default 100)")
+  },
+  async (args) => {
+    try {
+      const trafficForecast = {
+        name: args.forecastName,
+        dataPoints: args.dataPoints
+      };
+      if (args.forecastDescription !== void 0) trafficForecast.description = args.forecastDescription;
+      if (args.peakRPS !== void 0) trafficForecast.peakRPS = args.peakRPS;
+      if (args.avgRPS !== void 0) trafficForecast.avgRPS = args.avgRPS;
+      const result = await apiCall(
+        "POST",
+        "/api/predictions/optimize-thresholds",
+        { simulationId: args.simulationId, trafficForecast, testSteps: args.testSteps },
+        true
+      );
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "inject_traffic",
+  "Spike traffic into a running simulation. If a ramp pattern is active the call advances it by one increment; otherwise it injects a random traffic spike. Returns the updated simulation state and the event that was logged. Requires CWM_API_KEY with write scope.",
+  {
+    simulationId: z.string().describe("ID of the simulation to inject traffic into")
+  },
+  async (args) => {
+    try {
+      const result = await apiCall("POST", `/api/simulations/${args.simulationId}/inject-traffic`, {}, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "inject_failure",
+  "Randomly fail one healthy compute node in a running simulation. Returns the updated resource list and the failure event that was logged. Use get_simulation_events to review the full event log after injecting. Requires CWM_API_KEY with write scope.",
+  {
+    simulationId: z.string().describe("ID of the simulation to inject a node failure into")
+  },
+  async (args) => {
+    try {
+      const result = await apiCall("POST", `/api/simulations/${args.simulationId}/inject-failure`, {}, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "get_simulation_events",
+  "Retrieve the full ordered event log for a simulation. Events include scale-out/in actions, failure injections, cost spikes, bottleneck alerts, routing changes, and autoscaling triggers \u2014 the primary audit trail for understanding what happened during a run. Requires CWM_API_KEY with read scope.",
+  {
+    simulationId: z.string().describe("ID of the simulation whose event log to retrieve")
+  },
+  async (args) => {
+    try {
+      const result = await apiCall("GET", `/api/simulations/${args.simulationId}/events`, void 0, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "delete_simulation",
+  "Permanently delete a simulation and all of its associated metrics, events, snapshots, and failure injections. This action is irreversible. Requires CWM_API_KEY with write scope and ownership of the simulation.",
+  {
+    simulationId: z.string().describe("ID of the simulation to delete")
+  },
+  async (args) => {
+    try {
+      const result = await apiCall("DELETE", `/api/simulations/${args.simulationId}`, void 0, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "create_snapshot",
+  "Pin the current simulation state as a named snapshot for later comparison. Captures resources, latest metrics, active failures, and significant recent events. Returns a pinId you can use with get_snapshot to retrieve the pinned state later. Requires CWM_API_KEY with write scope.",
+  {
+    simulationId: z.string().describe("ID of the simulation to snapshot"),
+    label: z.string().optional().describe("Optional human-readable label for this snapshot (e.g. 'before scale-out')")
+  },
+  async (args) => {
+    try {
+      const body = {};
+      if (args.label !== void 0) body.label = args.label;
+      const result = await apiCall("POST", `/api/simulations/${args.simulationId}/snapshots`, body, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "list_snapshots",
+  "List all pinned snapshots for a simulation in reverse chronological order (newest first). Returns summary entries with pinId, label, pinnedAt timestamp, and top-level metrics \u2014 use get_snapshot to retrieve full detail for a specific pin. Requires CWM_API_KEY with read scope.",
+  {
+    simulationId: z.string().describe("ID of the simulation whose snapshots to list")
+  },
+  async (args) => {
+    try {
+      const result = await apiCall("GET", `/api/simulations/${args.simulationId}/snapshots`, void 0, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "get_snapshot",
+  "Retrieve a specific pinned snapshot by its pin ID. Returns the full snapshot payload: resources at pin time, latest metrics, active failures, and the significant events that were captured. Useful for before/after comparisons after scaling or failure injection. Requires CWM_API_KEY with read scope.",
+  {
+    simulationId: z.string().describe("ID of the simulation that owns the snapshot"),
+    pinId: z.string().describe("Pin ID returned by create_snapshot or list_snapshots")
+  },
+  async (args) => {
+    try {
+      const result = await apiCall("GET", `/api/simulations/${args.simulationId}/snapshots/${args.pinId}`, void 0, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "ai_explain",
+  "Generate a GPT-powered natural-language explanation of the simulation's current behavior: what is happening, why metrics look the way they do, and what the main drivers are. Set beginnerMode to true to receive simplified, jargon-free explanations. Requires CWM_API_KEY.",
+  {
+    simulationId: z.string().describe("ID of the simulation to explain"),
+    beginnerMode: z.boolean().optional().describe("Set to true for simplified, beginner-friendly explanations (default false)")
+  },
+  async (args) => {
+    try {
+      const body = {};
+      if (args.beginnerMode !== void 0) body.beginnerMode = args.beginnerMode;
+      const result = await apiCall("POST", `/api/simulations/${args.simulationId}/explain`, body, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "ai_troubleshoot",
+  "Generate AI-backed troubleshooting guidance for a specific problem in the simulation. Describe the issue and receive step-by-step diagnosis, root-cause hypotheses, and recommended remediation actions based on the current simulation state and event log. Requires CWM_API_KEY.",
+  {
+    simulationId: z.string().describe("ID of the simulation to troubleshoot"),
+    issue: z.string().describe("Description of the problem to troubleshoot (e.g. 'latency spiking after 500 RPS', 'cost doubled after scale-out')"),
+    beginnerMode: z.boolean().optional().describe("Set to true for simplified, beginner-friendly explanations (default false)")
+  },
+  async (args) => {
+    try {
+      const body = { issue: args.issue };
+      if (args.beginnerMode !== void 0) body.beginnerMode = args.beginnerMode;
+      const result = await apiCall("POST", `/api/simulations/${args.simulationId}/troubleshoot`, body, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "ai_analyze_bottlenecks",
+  "Run AI-backed bottleneck detection on the simulation. Identifies the top resource constraints limiting throughput or causing latency/error spikes, ranks them by severity, and suggests targeted remediation (e.g. scale out a specific tier, add a cache layer, switch instance type). Requires CWM_API_KEY.",
+  {
+    simulationId: z.string().describe("ID of the simulation to analyze for bottlenecks"),
+    beginnerMode: z.boolean().optional().describe("Set to true for simplified, beginner-friendly explanations (default false)")
+  },
+  async (args) => {
+    try {
+      const body = {};
+      if (args.beginnerMode !== void 0) body.beginnerMode = args.beginnerMode;
+      const result = await apiCall("POST", `/api/simulations/${args.simulationId}/analyze-bottlenecks`, body, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "rl_list_environments",
+  "List all RL training environments owned by the API key. Returns environment IDs, linked simulation IDs, active/completed status, episode progress, cumulative reward, and idle-expiry timestamps. Use rl_create_environment to start a new one. Requires CWM_API_KEY with read scope.",
+  {},
+  async (_args) => {
+    try {
+      const result = await apiCall("GET", "/api/rl/environments", void 0, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "rl_get_observation",
+  "Manually poll the current observation vector for an RL environment without advancing the episode. Returns the obs struct (rps, cpu_util, instances, traffic, tick_seconds, warmup_factor) and metrics struct (cost_usd_hr, latency_p95, error_rate, uptime, sla_violations). Useful for inspecting state between rl_step calls. Requires CWM_API_KEY with read scope.",
+  {
+    environmentId: z.string().describe("RL environment ID returned by rl_create_environment")
+  },
+  async (args) => {
+    try {
+      const result = await apiCall("GET", `/api/rl/environments/${args.environmentId}/observation`, void 0, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "rl_eval_episodes",
+  "Run one or more deterministic evaluation episodes against an RL environment by replaying ordered action sequences. Each episode resets to the baseline state and then executes the provided actions in order, recording per-step rewards and a final cumulative score. Use this to benchmark a trained policy without modifying the live environment state. Returns a job ID immediately for async mode; poll rl_eval_episodes_status for the result. Requires CWM_API_KEY with write scope.",
+  {
+    environmentId: z.string().describe("RL environment ID to evaluate against"),
+    episodes: z.array(
+      z.array(
+        z.object({
+          actionType: z.enum(["scale_out", "scale_in", "add_resource", "remove_resource", "adjust_threshold", "set_recovery_policy"]).describe("Action to execute"),
+          resourceId: z.string().optional().describe("Target resource ID"),
+          instanceCount: z.number().int().optional().describe("Number of instances to add or remove"),
+          cpuThreshold: z.number().optional().describe("New CPU scale-out threshold (for adjust_threshold)"),
+          latencyThreshold: z.number().optional().describe("New latency threshold in ms (for adjust_threshold)")
+        })
+      )
+    ).min(1).max(10).describe("Array of episodes; each episode is an ordered list of actions to replay"),
+    collapseThreshold: z.number().min(0).max(1).optional().describe("Fraction drop in reward that triggers reward_collapse detection (default 0.20)")
+  },
+  async (args) => {
+    try {
+      const body = { actions: args.episodes };
+      if (args.collapseThreshold !== void 0) body.collapseThreshold = args.collapseThreshold;
+      const result = await apiCall(
+        "POST",
+        `/api/rl/environments/${args.environmentId}/eval-episodes`,
+        body,
+        true
+      );
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "rl_eval_job_status",
+  "Poll the status of an async RL evaluation job. Status lifecycle: pending \u2192 running \u2192 completed | failed. When completed, call rl_eval_job_results to retrieve the full per-episode scores. Requires CWM_API_KEY with read scope.",
+  {
+    environmentId: z.string().describe("RL environment ID the eval job belongs to"),
+    jobId: z.string().describe("Eval job ID returned by rl_eval_episodes")
+  },
+  async (args) => {
+    try {
+      const result = await apiCall(
+        "GET",
+        `/api/rl/environments/${args.environmentId}/eval-episodes/${args.jobId}`,
+        void 0,
+        true
+      );
+      const r = result;
+      return { content: [{ type: "text", text: JSON.stringify({ status: r.status, jobId: r.id, createdAt: r.createdAt, completedAt: r.completedAt, error: r.error }, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "rl_eval_job_results",
+  "Retrieve the full results of a completed RL eval job. Returns per-episode cumulative rewards, per-step reward breakdowns, and reward_collapse flags. Call rl_eval_job_status first to confirm the job has completed. Requires CWM_API_KEY with read scope.",
+  {
+    environmentId: z.string().describe("RL environment ID the eval job belongs to"),
+    jobId: z.string().describe("Eval job ID returned by rl_eval_episodes")
+  },
+  async (args) => {
+    try {
+      const result = await apiCall(
+        "GET",
+        `/api/rl/environments/${args.environmentId}/eval-episodes/${args.jobId}`,
+        void 0,
+        true
+      );
+      const r = result;
+      if (r.status !== "completed") {
+        return { content: [{ type: "text", text: `Job is not completed yet (status: ${r.status}). Poll rl_eval_job_status until completed before calling this tool.` }], isError: true };
+      }
+      return { content: [{ type: "text", text: JSON.stringify(r.result ?? result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "ai_optimize",
+  "Generate AI-powered infrastructure optimization suggestions for a simulation. Returns a list of actionable recommendations ranked by expected impact \u2014 covering resource right-sizing, autoscaling tuning, caching, and multi-region strategies. Set beginnerMode for simplified explanations. Requires CWM_API_KEY.",
+  {
+    simulationId: z.string().describe("ID of the simulation to optimize"),
+    beginnerMode: z.boolean().optional().describe("Set to true for simplified, beginner-friendly suggestions (default false)")
+  },
+  async (args) => {
+    try {
+      const body = {};
+      if (args.beginnerMode !== void 0) body.beginnerMode = args.beginnerMode;
+      const result = await apiCall("POST", `/api/simulations/${args.simulationId}/optimize`, body, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "create_traffic",
+  "Create a persistent traffic pattern for a simulation (ramp, burst, step, wave, or spike). Unlike inject_traffic, this creates a named, manageable pattern that persists across steps and can be updated or deleted via update_traffic/delete_traffic. Returns the created pattern with its patternId. Requires CWM_API_KEY with write scope.",
+  {
+    simulationId: z.string().describe("ID of the simulation to add the pattern to"),
+    type: z.enum(["ramp", "burst", "step", "wave", "custom"]).describe("Traffic pattern type"),
+    name: z.string().optional().describe("Human-readable name for the pattern (required by the API; defaults to '<type>-<timestamp>' if omitted)"),
+    startTime: z.number().optional().describe("Simulation step at which the pattern begins (default 0)"),
+    rpsTarget: z.number().min(0).optional().describe("Target RPS for the pattern (depends on type)"),
+    durationSteps: z.number().int().min(1).optional().describe("Number of simulation steps for this pattern to run"),
+    parameters: z.record(z.unknown()).optional().describe("Additional pattern-specific parameters (e.g. { rampRate: 100, peakRPS: 5000 })")
+  },
+  async (args) => {
+    try {
+      const body = {
+        type: args.type,
+        name: args.name ?? `${args.type}-${Date.now()}`,
+        startTime: args.startTime ?? 0
+      };
+      if (args.rpsTarget !== void 0) body.rpsTarget = args.rpsTarget;
+      if (args.durationSteps !== void 0) body.durationSteps = args.durationSteps;
+      if (args.parameters !== void 0) body.parameters = args.parameters;
+      const result = await apiCall("POST", `/api/simulations/${args.simulationId}/patterns`, body, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "update_traffic",
+  "Update an existing traffic pattern by its patternId. Supports partial updates \u2014 only the fields you provide are changed. Requires CWM_API_KEY with write scope.",
+  {
+    patternId: z.string().describe("Pattern ID returned by create_traffic"),
+    rpsTarget: z.number().min(0).optional().describe("New target RPS"),
+    durationSteps: z.number().int().min(1).optional().describe("New step duration"),
+    parameters: z.record(z.unknown()).optional().describe("Pattern-specific parameters to merge/update"),
+    isActive: z.boolean().optional().describe("Set to false to deactivate the pattern without deleting it")
+  },
+  async (args) => {
+    try {
+      const body = {};
+      if (args.rpsTarget !== void 0) body.rpsTarget = args.rpsTarget;
+      if (args.durationSteps !== void 0) body.durationSteps = args.durationSteps;
+      if (args.parameters !== void 0) body.parameters = args.parameters;
+      if (args.isActive !== void 0) body.isActive = args.isActive;
+      const result = await apiCall("PATCH", `/api/patterns/${args.patternId}`, body, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "delete_traffic",
+  "Delete a traffic pattern by its patternId. The pattern is removed permanently from the simulation. Requires CWM_API_KEY with write scope.",
+  {
+    patternId: z.string().describe("Pattern ID returned by create_traffic")
+  },
+  async (args) => {
+    try {
+      await apiCall("DELETE", `/api/patterns/${args.patternId}`, void 0, true);
+      return { content: [{ type: "text", text: JSON.stringify({ deleted: true, patternId: args.patternId }) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "create_failure",
+  "Inject a persistent, typed failure into a simulation via the lifecycle API. Supports instance_kill, az_outage, database_overload, and network_latency failures. Returns the created failure record with its failureId for later update/delete. Requires CWM_API_KEY with write scope.",
+  {
+    simulationId: z.string().describe("ID of the simulation to inject the failure into"),
+    type: z.enum(["instance_kill", "az_outage", "database_overload", "network_latency"]).describe("Type of failure to inject"),
+    name: z.string().optional().describe("Human-readable label for this failure injection (required by the API; defaults to '<type>-<timestamp>' if omitted)"),
+    startTime: z.number().optional().describe("Simulation step at which the failure begins (default 0)"),
+    targetResourceId: z.string().optional().describe("ID of the specific resource to target (required for instance_kill; optional for others)"),
+    parameters: z.record(z.unknown()).optional().describe("Type-specific parameters (e.g. { azId: 'us-east-1a' } for az_outage, { latencyMs: 200 } for network_latency)"),
+    isActive: z.boolean().optional().describe("Whether the failure should be active immediately (default true)")
+  },
+  async (args) => {
+    try {
+      const body = {
+        type: args.type,
+        name: args.name ?? `${args.type}-${Date.now()}`,
+        startTime: args.startTime ?? 0
+      };
+      if (args.targetResourceId !== void 0) body.targetResourceId = args.targetResourceId;
+      if (args.parameters !== void 0) body.parameters = args.parameters;
+      if (args.isActive !== void 0) body.isActive = args.isActive;
+      const result = await apiCall("POST", `/api/simulations/${args.simulationId}/failures`, body, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "update_failure",
+  "Update an existing failure injection by its failureId. Use isActive: false to deactivate/resolve the failure without deleting it. Requires CWM_API_KEY with write scope.",
+  {
+    failureId: z.string().describe("Failure ID returned by create_failure"),
+    isActive: z.boolean().optional().describe("Set to false to resolve/deactivate the failure"),
+    parameters: z.record(z.unknown()).optional().describe("Updated failure parameters to merge")
+  },
+  async (args) => {
+    try {
+      const body = {};
+      if (args.isActive !== void 0) body.isActive = args.isActive;
+      if (args.parameters !== void 0) body.parameters = args.parameters;
+      const result = await apiCall("PATCH", `/api/failures/${args.failureId}`, body, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "delete_failure",
+  "Permanently delete a failure injection by its failureId. The failure is removed and its effects are cleared from the simulation. Requires CWM_API_KEY with write scope.",
+  {
+    failureId: z.string().describe("Failure ID returned by create_failure")
+  },
+  async (args) => {
+    try {
+      await apiCall("DELETE", `/api/failures/${args.failureId}`, void 0, true);
+      return { content: [{ type: "text", text: JSON.stringify({ deleted: true, failureId: args.failureId }) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "bulk_resize",
+  "Resize all compute resources in a DigitalOcean simulation to a new droplet size in one call. Applies the new size tier (hourly rate, throughput cap) to every compute node simultaneously. Use list_simulations to find the simulationId. Requires CWM_API_KEY with write scope.",
+  {
+    simulationId: z.string().describe("ID of the DigitalOcean simulation to resize"),
+    dropletSize: z.string().describe("Target droplet size label (e.g. 's-1vcpu-1gb', 's-2vcpu-4gb', 's-4vcpu-8gb', 's-8vcpu-16gb', 'c-4'). Must be a valid DigitalOcean droplet size supported by the platform.")
+  },
+  async (args) => {
+    try {
+      const result = await apiCall("POST", `/api/simulations/${args.simulationId}/bulk-resize`, { dropletSize: args.dropletSize }, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "simulation_claim",
+  "Claim ownership of a simulation using the current API key. Useful when a simulation was created anonymously (via the UI) and you want to associate it with your API key for persistent access and multi-step automation. Returns the updated simulation. Requires CWM_API_KEY with write scope.",
+  {
+    simulationId: z.string().describe("ID of the unclaimed simulation to claim")
+  },
+  async (args) => {
+    try {
+      const result = await apiCall("POST", `/api/simulations/${args.simulationId}/claim`, {}, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "validate_accuracy",
+  "Validate the cost and performance accuracy of a simulation against real-world provider reference data. Returns cost accuracy (\xB110% threshold) and performance accuracy (\xB115% threshold) scores, plus an overallValid flag. Use this to verify your simulation is within acceptable drift before using its output for production decisions. Requires CWM_API_KEY.",
+  {
+    simulationId: z.string().describe("ID of the simulation to validate")
+  },
+  async (args) => {
+    try {
+      const result = await apiCall("GET", `/api/simulations/${args.simulationId}/validate-accuracy`, void 0, true);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+server.tool(
+  "list_benchmarks",
+  "List accuracy benchmark results for all supported AWS 6th-generation instance types (m6i, c6i, r6i families). Returns per-instance overall score, cost score, latency score, and performance score \u2014 useful for comparing which instance tier simulates most accurately for your workload. No authentication required.",
+  {},
+  async (_args) => {
+    try {
+      const result = await apiCall("GET", "/api/accuracy-benchmark/instances");
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
       return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
