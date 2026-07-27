@@ -1,4 +1,6 @@
-# cwm-mcp
+# Cloud World Model MCP Server
+
+**Package / command name: `cwm-mcp`**
 
 MCP (Model Context Protocol) server for [Cloud World Model](https://www.cloudworldmodel.ai) — lets Claude Desktop, Cursor, Cline, and any other MCP-compatible AI assistant call the simulation platform directly via stdio.
 
