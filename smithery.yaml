@@ -1,0 +1,22 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      apiKey:
+        type: string
+        title: Cloud World Model API Key
+        description: "Optional Cloud World Model API key. Leave blank to use public demo endpoints, or create a free API key at https://cloudworldmodel.ai to unlock the full toolset."
+    required: []
+  commandFunction: |-
+    (config) => {
+      const env = {};
+      if (config.apiKey) {
+        env.CWM_API_KEY = config.apiKey;
+      }
+      return {
+        command: "npx",
+        args: ["-y", "cwm-mcp"],
+        env
+      };
+    }

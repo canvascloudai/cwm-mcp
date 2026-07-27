@@ -1,14 +1,47 @@
 {
   "name": "cwm-mcp",
   "version": "1.1.0",
-  "description": "MCP server for Cloud World Model — expose simulation tools to Claude, GPT, and any MCP-compatible AI assistant",
+  "description": "MCP server for Cloud World Model — expose 49 simulation tools to Claude, Cursor, Windsurf, VS Code, Zed, and any MCP-compatible AI assistant",
   "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "cloud",
+    "simulation",
+    "aws",
+    "gcp",
+    "azure",
+    "oci",
+    "digitalocean",
+    "claude",
+    "ai-agent",
+    "reinforcement-learning",
+    "cloud-world-model"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/canvascloudai/cwm-mcp.git"
+  },
+  "homepage": "https://www.cloudworldmodel.ai",
+  "bugs": {
+    "url": "https://github.com/canvascloudai/cwm-mcp/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "smithery.yaml"
+  ],
   "bin": {
     "cwm-mcp": "./dist/index.js"
   },
   "main": "./dist/index.js",
   "scripts": {
     "build": "esbuild index.ts --platform=node --packages=external --bundle --format=esm --banner:js='#!/usr/bin/env node' --outfile=dist/index.js && chmod +x dist/index.js",
+    "prepublishOnly": "npm run build",
     "start": "node dist/index.js"
   },
   "dependencies": {
