@@ -1252,8 +1252,8 @@ const mcpResilienceConfigSchema = z.object({
 
 /**
  * Register the full authenticated tool set on the given
- * McpServer. Shared by the stdio entry point (cwm-mcp/index.ts) and the
- * Streamable HTTP transport (server/mcp-http.ts) so the two cannot drift.
+ * McpServer. Shared by the internal test harness and the hosted Streamable HTTP
+ * transport (server/mcp-http.ts) so their tool schemas cannot drift.
  */
 export function registerTools(server: McpServer, ctx: ToolContext): void {
 

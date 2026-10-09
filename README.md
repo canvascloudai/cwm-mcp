@@ -143,7 +143,10 @@ header. Omit `headers` to use the keyless demo tools:
 Create an API key at https://www.cloudworldmodel.ai/getting-started.
 
 
+<!-- BEGIN GENERATED MCP TOOL TABLE -->
 ## Available tools (63)
+
+The 9 keyless demo tools are marked. All other tools require an API key.
 
 > **REST-only x402 operation:** `POST /api/simulations/stateless` is intentionally
 > not an MCP tool. MCP invocation cannot preserve the HTTP 402 challenge,
@@ -151,121 +154,72 @@ Create an API key at https://www.cloudworldmodel.ai/getting-started.
 > payment replay boundary end to end. The MCP tool counts therefore remain
 > unchanged.
 
-## Available tools (63)
-
-### Discovery
-
-| Tool | Description |
-|---|---|
-| `api.spec` | Return the OpenAPI spec URL and format (no auth required) |
-
-### Simulation lifecycle
-
-| Tool | Description |
-|---|---|
-| `simulation.create` | Create a virtual cloud environment with resources |
-| `simulation.step` | Advance the simulation one tick and get metrics |
-| `simulation.metrics` | Read current metrics and resource health |
-| `simulation.provider_api_limits` | Simulate bounded provider quotas, throttling, retries, queueing, and concurrency with catalog/override provenance; does not call a cloud API or advance `/step` |
-| `simulation.cost_breakdown` | Latest per-resource hourly cost with status — spot zombie/residual billing |
-| `simulation.list` | List all simulations owned by the API key |
-| `simulation.delete` | Permanently delete a simulation and its data |
-| `simulation.claim` | Claim ownership of an anonymous simulation with your API key |
-| `simulation.resize` | Resize all compute nodes to a new droplet size in one call (DigitalOcean-only; never use for failure recovery) |
-| `simulation.recover_resource` | Recover a single failed resource by name or ID (any provider); response echoes lower-bound `stepsToHealthy` and tells callers to poll until healthy |
-
-### Simulation state & snapshots
-
-| Tool | Description |
-|---|---|
-| `snapshot.create` | Pin the current simulation state for later comparison |
-| `snapshot.list` | List all pinned snapshots for a simulation |
-| `snapshot.get` | Retrieve a specific pinned snapshot by pin ID |
-| `simulation.events` | Retrieve the full ordered event log |
-
-### Traffic management
-
-| Tool | Description |
-|---|---|
-| `simulation.inject_traffic` | Spike traffic (or advance an active ramp pattern) |
-| `traffic.create` | Create a persistent, named traffic pattern (ramp/burst/step/wave/spike) |
-| `traffic.update` | Update an existing traffic pattern by patternId |
-| `traffic.delete` | Delete a traffic pattern permanently |
-
-### Failure management
-
-| Tool | Description |
-|---|---|
-| `simulation.inject_failure` | Randomly fail one healthy compute node |
-| `failure.create` | Inject a typed, persistent failure (instance_kill/instance_down/az_outage/database_overload/network_latency/spot_interruption); `spot_interruption` is the bounded 120-second AWS EKS migration lifecycle |
-| `failure.update` | Update a failure injection (e.g. deactivate without deleting) |
-| `failure.delete` | Delete a failure injection permanently |
-
-### Accuracy validation
-
-| Tool | Description |
-|---|---|
-| `benchmark.validate` | Validate simulation cost and performance accuracy against real-world reference data |
-| `benchmark.list` | List accuracy benchmark scores for AWS 6th-gen instance types |
-
-### AI analysis
-
-| Tool | Description |
-|---|---|
-| `ai.explain` | GPT-powered explanation of current simulation behavior |
-| `ai.troubleshoot` | AI-backed troubleshooting guidance for a described issue |
-| `ai.analyze` | Detect and rank resource bottlenecks with remediation suggestions |
-| `ai.optimize` | Generate AI-powered infrastructure optimization recommendations |
-
-### Reinforcement learning
-
-| Tool | Description |
-|---|---|
-| `rl.create` | Wrap a simulation in a Gym-compatible RL environment |
-| `rl.step` | Execute one action and receive observation + reward |
-| `rl.reset` | Reset the environment for a new training episode |
-| `rl.batch_step` | Execute multiple actions in one call (optimised for high-throughput training) |
-| `rl.list` | List all RL environments owned by the API key |
-| `rl.observation` | Poll the current observation vector without advancing the episode |
-| `rl.eval` | Replay ordered action sequences to benchmark a trained policy |
-| `rl.eval_status` | Poll the status of an async eval job |
-| `rl.eval_results` | Retrieve the full per-episode rewards from a completed eval job |
-
-### Chaos engineering
-
-| Tool | Description |
-|---|---|
-| `chaos.scenarios` | Browse pre-built failure scenarios (no auth required) |
-| `chaos.run` | Inject a failure and start a resilience measurement job |
-| `chaos.status` | Poll job progress |
-| `chaos.results` | Retrieve the full resilience report |
-
-### Multi-cloud strategy
-
-| Tool | Description |
-|---|---|
-| `multicloud.explore` | Compare AWS/GCP/Azure/OCI/DigitalOcean strategies |
-| `multicloud.status` | Poll job progress |
-| `multicloud.results` | Retrieve ranked strategies with cost/latency/lock-in scores |
-| `multicloud.verdict` | Inspect a candidate fingerprint, then evaluate completed caller-attested resilience evidence for those exact test inputs. Ship requires all checks to pass; estimated evidence is insufficient. Reports are not independently verified or persisted. |
-
-### Predictive scaling
-
-| Tool | Description |
-|---|---|
-| `prediction.validate` | Validate infrastructure against a traffic forecast |
-| `prediction.optimize_thresholds` | Derive recommended autoscaling thresholds from a traffic forecast |
-| `prediction.status` | Poll job progress |
-| `prediction.results` | Retrieve bottleneck detections and autoscaling thresholds |
-
-### Infrastructure optimization
-
-| Tool | Description |
-|---|---|
-| `optimization.run` | Start a cost/performance/reliability optimization job |
-| `optimization.status` | Poll job progress |
-| `optimization.results` | Retrieve ranked recommendations with expected impact |
-
+| Tool | Access | Registry title |
+|---|---|---|
+| `api.spec` | API key | Get API Spec |
+| `simulation.create` | Keyless demo (also API key) | Create Simulation |
+| `simulation.update` | API key | Update Simulation |
+| `simulation.step` | Keyless demo (also API key) | Simulate Step |
+| `simulation.metrics` | Keyless demo (also API key) | Get Simulation Metrics |
+| `simulation.cost_breakdown` | API key | Get Per-Resource Cost Breakdown |
+| `simulation.list` | API key | List Simulations |
+| `simulation.get` | API key | Get Simulation |
+| `simulation.provider_api_limits` | API key | Simulate Provider API Limits |
+| `rl.create` | API key | Create RL Environment |
+| `rl.step` | API key | RL Step |
+| `rl.validate_policy` | API key | Validate Action Policy (Dev) |
+| `rl.reset` | API key | Reset RL Environment |
+| `rl.batch_step` | API key | RL Batch Step |
+| `chaos.scenarios` | API key | List Chaos Scenarios |
+| `chaos.run` | API key | Run Chaos Experiment |
+| `chaos.status` | API key | Chaos Job Status |
+| `chaos.results` | API key | Chaos Job Results |
+| `multicloud.explore` | API key | Multi-Cloud Explore |
+| `multicloud.status` | API key | Multi-Cloud Job Status |
+| `multicloud.results` | API key | Multi-Cloud Job Results |
+| `multicloud.verdict` | API key | Finalize Pre-Provision Verdict |
+| `prediction.validate` | API key | Prediction Validate |
+| `prediction.status` | API key | Prediction Job Status |
+| `prediction.results` | API key | Prediction Job Results |
+| `optimization.run` | API key | Run Optimization Job |
+| `optimization.status` | API key | Optimization Job Status |
+| `optimization.results` | API key | Optimization Job Results |
+| `prediction.optimize_thresholds` | API key | Prediction Optimize Thresholds |
+| `simulation.inject_traffic` | Keyless demo (also API key) | Inject Traffic |
+| `simulation.inject_failure` | Keyless demo (also API key) | Inject Failure |
+| `simulation.events` | API key | Get Simulation Events |
+| `simulation.delete` | Keyless demo (also API key) | Delete Simulation |
+| `snapshot.create` | API key | Create Snapshot |
+| `snapshot.list` | API key | List Snapshots |
+| `snapshot.get` | API key | Get Snapshot |
+| `ai.explain` | API key | AI Explain |
+| `ai.troubleshoot` | API key | AI Troubleshoot |
+| `ai.analyze` | API key | AI Analyze Bottlenecks |
+| `ai.status` | API key | AI Job Status |
+| `ai.results` | API key | AI Job Results |
+| `rl.list` | API key | List RL Environments |
+| `rl.observation` | API key | Get RL Observation |
+| `rl.eval` | API key | Evaluate RL Episodes |
+| `rl.eval_status` | API key | RL Eval Job Status |
+| `rl.eval_results` | API key | RL Eval Job Results |
+| `ai.optimize` | API key | AI Optimize |
+| `traffic.create` | API key | Create Traffic Pattern |
+| `traffic.update` | API key | Update Traffic Pattern |
+| `traffic.delete` | API key | Delete Traffic Pattern |
+| `failure.create` | API key | Create Failure Injection |
+| `failure.update` | API key | Update Failure Injection |
+| `failure.delete` | API key | Delete Failure Injection |
+| `simulation.resize` | API key | Bulk Resize Compute |
+| `simulation.recover_resource` | Keyless demo (also API key) | Recover Failed Resource |
+| `simulation.claim` | API key | Claim Simulation |
+| `benchmark.validate` | API key | Validate Accuracy |
+| `benchmark.list` | API key | List Benchmarks |
+| `simulation.right_sizing_hint` | API key | Get Right-Sizing Hint |
+| `simulation.apply_right_sizing` | API key | Apply Right-Sizing Hint |
+| `scenario.list` | Keyless demo (also API key) | List Scenarios |
+| `scenario.get` | Keyless demo (also API key) | Get Scenario |
+| `simulation.compare_resilience` | API key | Compare Resilience Configurations |
+<!-- END GENERATED MCP TOOL TABLE -->
 ## Typical agent workflows
 
 ```

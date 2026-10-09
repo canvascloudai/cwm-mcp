@@ -1,0 +1,7 @@
+# Source files — only dist/ is published
+index.ts
+tsconfig.json
+
+# Dev artifacts
+node_modules/
+*.log
