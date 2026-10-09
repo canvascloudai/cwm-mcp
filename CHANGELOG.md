@@ -7,19 +7,35 @@ A new npm release is cut by pushing a git tag matching `cwm-mcp/vX.Y.Z`, which t
 
 ---
 
+## Unreleased — workload evidence
+
+- `simulation.create` accepts immutable root `appWeight` (`lean`, `typical`, `heavy`).
+  Omission means typical and preserves `appWeightDefaulted=true`.
+- Create, step and metrics (including history), compact and full, expose versioned
+  `predictionEvidence`: per-quantity provenance, sources, formulas and assumption
+  intervals, not statistical confidence intervals. Legacy rows are explicitly unavailable.
+- Two m5.large apps at 100 total RPS (50 per server) now target ~20% CPU with typical
+  weight, versus the deliberately lean benchmark's ~1.9%. Typical anchors are
+  placeholder guidance; heavy is an unsupported product assumption, not AWS evidence.
+- Lean owned four-rung predictions remain unchanged. Known-vCPU shapes use the
+  reference model; proportional lean M5 scaling does not claim measurement on
+  another size. Above 1,000 RPS evidence is never measured and ranges widen.
+- Accuracy comparisons explicitly select lean; non-AWS benchmark compatibility
+  intentionally preserves existing scores, not self-serve generic predictions.
+
 ## [1.1.0] — 2026-07-26
 
 ### Added
 - 49 tools total (up from the original 11 in v1.0.0)
-- Simulation lifecycle: `create_snapshot`, `list_snapshots`, `get_snapshot`, `simulation_claim`, `validate_accuracy`, `list_benchmarks`
-- Traffic lifecycle: `create_traffic`, `update_traffic`, `delete_traffic`
-- Failure lifecycle: `create_failure`, `update_failure`, `delete_failure`
-- RL tools: `rl_list_environments`, `rl_get_observation`, `rl_eval_episodes`, `rl_eval_job_status`, `rl_eval_job_results`
-- Compute resize: `bulk_resize`
+- Simulation lifecycle: `snapshot.create`, `snapshot.list`, `snapshot.get`, `simulation.claim`, `benchmark.validate`, `benchmark.list`
+- Traffic lifecycle: `traffic.create`, `traffic.update`, `traffic.delete`
+- Failure lifecycle: `failure.create`, `failure.update`, `failure.delete`
+- RL tools: `rl.list`, `rl.observation`, `rl.eval`, `rl.eval_status`, `rl.eval_results`
+- Compute resize: `simulation.resize`
 - ESM output format (fixes Node.js ES module compatibility)
-- Schema defaults for `name` and `startTime` on `create_traffic` / `create_failure`
+- Schema defaults for `name` and `startTime` on `traffic.create` / `failure.create`
 
 ## [1.0.0] — 2025-01-01
 
 ### Added
-- Initial release with 11 core tools: `create_simulation`, `simulate_step`, `get_simulation_metrics`, `list_simulations`, `delete_simulation`, `inject_traffic`, `inject_failure`, `get_simulation_events`, `ai_explain`, `ai_troubleshoot`, `ai_analyze_bottlenecks`
+- Initial release with 11 core tools: `simulation.create`, `simulation.step`, `simulation.metrics`, `simulation.list`, `simulation.delete`, `simulation.inject_traffic`, `simulation.inject_failure`, `simulation.events`, `ai.explain`, `ai.troubleshoot`, `ai.analyze`

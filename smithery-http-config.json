@@ -1,0 +1,14 @@
+{
+  "type": "object",
+  "description": "Simulate cloud infrastructure and estimate cost before deploying or changing infrastructure. Model AWS, GCP, Azure, OCI, and DigitalOcean workloads with cost, latency, errors, and resilience estimates. Includes reinforcement learning environments, chaos experiments, multi-cloud comparisons, predictive scaling, and AI-backed analysis. Hosted Streamable HTTP MCP endpoint: https://www.cloudworldmodel.ai/mcp.",
+  "properties": {
+    "CWM_API_KEY": {
+      "type": "string",
+      "title": "Cloud World Model API Key",
+      "description": "Optional API key. Without a key, 9 keyless demo tools are available with caps of 2 simulations, 20 steps, and 50 calls per session. Add an API key to unlock all 63 authenticated tools without demo caps. The endpoint is Cloud World Model's hosted Streamable HTTP MCP server.",
+      "x-from": { "header": "cwm-api-key" },
+      "x-to": { "header": "x-api-key" }
+    }
+  },
+  "required": []
+}

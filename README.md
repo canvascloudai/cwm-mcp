@@ -1,49 +1,119 @@
 # Cloud World Model MCP Server
 
-**Package / command name: `cwm-mcp`**
+Cloud World Model is a hosted streamable HTTP MCP server that lets coding agents simulate cloud infrastructure and estimate cost, latency, errors and resilience before deploying or changing infrastructure. It covers AWS, GCP, Azure, OCI and DigitalOcean. Simulations don't create resources in your cloud account.
 
-MCP (Model Context Protocol) server for [Cloud World Model](https://www.cloudworldmodel.ai) — lets Claude Desktop, Cursor, Cline, and any other MCP-compatible AI assistant call the simulation platform directly via stdio.
+[Open the MCP quickstart](https://www.cloudworldmodel.ai/mcp-quickstart).
 
-## Installation
+MCP and REST are access interfaces; x402 is payment for eligible REST requests, not MCP calls. The hosted endpoint provides 63 authenticated tools and 9 keyless demo tools.
+
+## CPU and latency evidence
+
+`simulation.create` accepts **root-level, immutable** `appWeight: "lean" | "typical" | "heavy"`.
+Omitting it selects typical and records `appWeightDefaulted: true`; explicit typical
+has identical predictions. Create, step and metrics/history retain
+`predictionEvidence.version: 1` in compact and full responses. The level describes
+the prediction's basis, not a claim that a simulated output was observed.
+
+- **Measured:** lean, exact eligible AWS CRUD topology, 10–1,000 offered RPS, no outage.
+- **Scaled from measured:** lean proportional AWS M5 vCPU/RAM scaling or the exact
+  graph above the measured load. No measurement on another size is claimed.
+- **Reference estimate:** typical/heavy, other providers/families, incomplete graphs
+  and active failures. Typical anchors are placeholder guidance, not official AWS
+  CPU/latency references; heavy is an unsupported product assumption.
+
+At 100 total RPS across two m5.large hosts (50 per server), typical targets 20% CPU,
+P50 18.5 ms and P95 45 ms; lean is ~1.9% CPU. CPU uses
+`(0.22333 + k * 0.033548 * routedAppRps) * 2 / catalogVcpu`,
+with `k=1` for lean, `(20-0.22333)/(50*0.033548)` for typical and twice that for heavy.
+Never divide goodput or DB/network traffic to obtain routed application RPS.
+Latency starts from the owned linear lean fits, floored at P50 1.45/P95 3.10 ms;
+typical multiplies these by `18.5/2.40` and `45/4.25`, heavy twice those factors.
+Topology/failure/congestion penalties remain; P99 is not calibrated. These are
+internal/in-VPC LB baselines, not universal end-to-end or cross-provider measurements.
+
+The low/central/high values are **assumption intervals, not confidence intervals**:
+measured 0.65–1.35×; scaled CPU 0.40–1.60× and latency 0.50–1.50×;
+reference 0.50–2×. Above 1,000 RPS scaled widens to 0.25–2× and reference to
+0.25–3×; never measured. CPU is clamped to 0–100%. `appCpu` averages serving
+app-host CPU, not aggregate `cpuUsage`; no app means null and an empty resource array.
+Source/formula IDs accompany every new result. Historical missing evidence is
+explicitly `unavailable/legacy`, not retroactively measured.
+
+Residual generic categories are custom/unrecognized SKUs without verified vCPU,
+opaque Kubernetes pools, serverless tasks without a trustworthy serving-vCPU and
+routing denominator, GPU token/inference/training metrics, and DB/network-only
+graphs. Such unverified fallback has **no external reference**, includes
+`cwm-legacy-generic-unverified`, and uses the widest reference interval.
+Scaling host vCPU does not establish single-process Node request capacity; the
+observed ~51% CPU app-bound holdout is not a universal CPU cap.
+
+Owned campaign `473f1339-f712-4096-96d6-3d4fc07cb427`, revision `117051b`,
+measurement `7416cb63`, supports only the existing lean fit/holdout.
+Accuracy comparisons explicitly choose lean; non-AWS benchmark-only compatibility
+preserves existing scores and citations, not generic self-serve behavior.
+Prediction hashes include weight/model revision separately from replay-input hashes.
+
+### Citing and reproducing simulation evidence
+
+For a claim about measured accuracy, cite the [accuracy benchmark](https://www.cloudworldmodel.ai/accuracy)
+and its public [data endpoint](https://www.cloudworldmodel.ai/api/accuracy-benchmark),
+not a single simulated result as if it were an observation. The owned measurement
+is scoped to an ALB → two m5.large app hosts → db.r5.large RDS MySQL Single-AZ
+graph in AWS us-east-2 at 10, 100, 500 and 1,000 offered RPS. The accuracy
+comparison covers app-host CPU, in-VPC internal-LB latency, goodput and CRUD
+errors; cost uses AWS us-east-2 price-list data rather than a measured invoice.
+See [simulation fidelity](https://www.cloudworldmodel.ai/fidelity) for source
+and coverage notes and the [benchmark report](https://www.cloudworldmodel.ai/benchmark)
+for provider comparisons. Neither establishes measured accuracy for every topology.
+
+To inspect the published evidence independently, retrieve the public benchmark
+response and record the campaign/revision, workload, region, load, metric and
+fit/holdout provenance alongside any quoted result:
 
 ```bash
-npx cwm-mcp
+curl -fsS https://www.cloudworldmodel.ai/api/accuracy-benchmark
 ```
 
-Or install globally:
+To compare a local MCP run, set `appWeight: "lean"` on `simulation.create`,
+keep the graph, region and offered load aligned with the cited benchmark, and
+retain `predictionEvidence` and the prediction/replay-input hashes in your
+record. Label outputs `measured`, `scaled from measured`, or `reference estimate`
+as reported; do not promote scaled or reference estimates to measurements.
+Simulation steps are predictions, not a rerun of the owned AWS campaign.
+The [docs hub](https://www.cloudworldmodel.ai/docs) and
+[multi-cloud simulation guide](https://www.cloudworldmodel.ai/guides/pre-provision-multi-cloud-simulation)
+provide further orientation.
 
-```bash
-npm install -g cwm-mcp
-```
+## Connect to the hosted server
 
-## Configuration
+Endpoint: `https://www.cloudworldmodel.ai/mcp`
 
-### Claude Desktop — one-click install
+For an API-key connection, send `x-api-key: <api-key>` on initialization and
+every subsequent session request, including GET and DELETE. Without a key, 9 keyless demo tools are
+available; an API key unlocks all 63 authenticated tools. Invalid credentials
+return HTTP 401 rather than opening a demo session.
 
-Click the link below to install directly into Claude Desktop (macOS/Windows):
+### Claude Desktop
 
-```
-claude://install-mcp?name=cloud-world-model&command=npx&args=cwm-mcp&env=CWM_BASE_URL%3Dhttps%3A%2F%2Fwww.cloudworldmodel.ai,CWM_API_KEY%3Dyour-api-key-here
-```
-
-Or add manually to `claude_desktop_config.json` (typically at `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+Add the following remote server entry to `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "cloud-world-model": {
-      "command": "npx",
-      "args": ["cwm-mcp"],
-      "env": {
-        "CWM_BASE_URL": "https://www.cloudworldmodel.ai",
-        "CWM_API_KEY": "your-api-key-here"
-      }
+      "type": "http",
+      "url": "https://www.cloudworldmodel.ai/mcp",
+      "headers": { "x-api-key": "<your CWM API key>" }
     }
   }
 }
 ```
 
-Restart Claude Desktop after saving. The tools appear under the hammer icon in the chat interface.
+Claude Code can connect with:
+
+```bash
+claude mcp add --transport http cloud-world-model https://www.cloudworldmodel.ai/mcp --header "x-api-key: <your CWM API key>"
+```
 
 ### Cursor (`.cursor/mcp.json`)
 
@@ -51,266 +121,193 @@ Restart Claude Desktop after saving. The tools appear under the hammer icon in t
 {
   "mcpServers": {
     "cloud-world-model": {
-      "command": "npx",
-      "args": ["cwm-mcp"],
-      "env": {
-        "CWM_BASE_URL": "https://www.cloudworldmodel.ai",
-        "CWM_API_KEY": "your-api-key-here"
-      }
+      "url": "https://www.cloudworldmodel.ai/mcp",
+      "headers": { "x-api-key": "<your CWM API key>" }
     }
   }
 }
 ```
 
-Reload Cursor after saving. Tools will appear in the MCP panel in the chat sidebar.
+### Generic remote MCP client
 
-### Cline (VS Code extension)
-
-Open the Cline extension settings → **MCP Servers** → **Edit MCP Settings**, then add:
+Configure the hosted Streamable HTTP URL and, when authenticated, the API-key
+header. Omit `headers` to use the keyless demo tools:
 
 ```json
 {
-  "mcpServers": {
-    "cloud-world-model": {
-      "command": "npx",
-      "args": ["cwm-mcp"],
-      "env": {
-        "CWM_BASE_URL": "https://www.cloudworldmodel.ai",
-        "CWM_API_KEY": "your-api-key-here"
-      }
-    }
-  }
+  "url": "https://www.cloudworldmodel.ai/mcp",
+  "headers": { "x-api-key": "<your CWM API key>" }
 }
 ```
 
-Save and click **Reconnect** in the MCP Servers panel. The 49 tools will appear as available.
+Create an API key at https://www.cloudworldmodel.ai/getting-started.
 
-### Windsurf (`~/.codeium/windsurf/mcp_config.json`)
 
-Open the global MCP config file at `~/.codeium/windsurf/mcp_config.json` (create it if it doesn't exist) and add:
+## Available tools (63)
 
-```json
-{
-  "mcpServers": {
-    "cloud-world-model": {
-      "command": "npx",
-      "args": ["cwm-mcp"],
-      "env": {
-        "CWM_BASE_URL": "https://www.cloudworldmodel.ai",
-        "CWM_API_KEY": "your-api-key-here"
-      }
-    }
-  }
-}
-```
+> **REST-only x402 operation:** `POST /api/simulations/stateless` is intentionally
+> not an MCP tool. MCP invocation cannot preserve the HTTP 402 challenge,
+> Base/Solana payment-header selection, settlement response, and exact-once
+> payment replay boundary end to end. The MCP tool counts therefore remain
+> unchanged.
 
-Restart Windsurf after saving. The tools will be available to the Cascade AI assistant.
-
-### VS Code (`.vscode/mcp.json`)
-
-Requires **VS Code 1.99 or later** (native MCP support shipped April 2025).
-
-Create `.vscode/mcp.json` in your project root (workspace-scoped) or add to your user `settings.json` under `"mcp"`:
-
-```json
-{
-  "servers": {
-    "cloud-world-model": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["cwm-mcp"],
-      "env": {
-        "CWM_BASE_URL": "https://www.cloudworldmodel.ai",
-        "CWM_API_KEY": "your-api-key-here"
-      }
-    }
-  }
-}
-```
-
-Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and run **MCP: List Servers** to confirm the server is registered. The tools will be available to GitHub Copilot and any other MCP-aware VS Code extension.
-
-### Zed (`~/.config/zed/settings.json`)
-
-Merge the following into your Zed settings file (open it with `zed: Open Settings` from the command palette):
-
-```json
-{
-  "context_servers": {
-    "cloud-world-model": {
-      "command": {
-        "path": "npx",
-        "args": ["cwm-mcp"],
-        "env": {
-          "CWM_BASE_URL": "https://www.cloudworldmodel.ai",
-          "CWM_API_KEY": "your-api-key-here"
-        }
-      }
-    }
-  }
-}
-```
-
-Restart Zed after saving. The tools will be available in the Zed AI assistant panel.
-
-## Environment variables
-
-| Variable | Required | Description |
-|---|---|---|
-| `CWM_BASE_URL` | No (defaults to `http://localhost:5000`) | Base URL of the Cloud World Model API |
-| `CWM_API_KEY` | Yes | API key with `write` scope. Obtain one via `POST /api/keys` on your Cloud World Model instance. |
-
-## Available tools (49)
+## Available tools (63)
 
 ### Discovery
 
 | Tool | Description |
 |---|---|
-| `get_api_spec` | Return the OpenAPI spec URL and format (no auth required) |
+| `api.spec` | Return the OpenAPI spec URL and format (no auth required) |
 
 ### Simulation lifecycle
 
 | Tool | Description |
 |---|---|
-| `create_simulation` | Create a virtual cloud environment with resources |
-| `simulate_step` | Advance the simulation one tick and get metrics |
-| `get_simulation_metrics` | Read current metrics and resource health |
-| `list_simulations` | List all simulations owned by the API key |
-| `delete_simulation` | Permanently delete a simulation and its data |
-| `simulation_claim` | Claim ownership of an anonymous simulation with your API key |
-| `bulk_resize` | Resize all compute nodes to a new droplet size in one call (DigitalOcean) |
+| `simulation.create` | Create a virtual cloud environment with resources |
+| `simulation.step` | Advance the simulation one tick and get metrics |
+| `simulation.metrics` | Read current metrics and resource health |
+| `simulation.provider_api_limits` | Simulate bounded provider quotas, throttling, retries, queueing, and concurrency with catalog/override provenance; does not call a cloud API or advance `/step` |
+| `simulation.cost_breakdown` | Latest per-resource hourly cost with status — spot zombie/residual billing |
+| `simulation.list` | List all simulations owned by the API key |
+| `simulation.delete` | Permanently delete a simulation and its data |
+| `simulation.claim` | Claim ownership of an anonymous simulation with your API key |
+| `simulation.resize` | Resize all compute nodes to a new droplet size in one call (DigitalOcean-only; never use for failure recovery) |
+| `simulation.recover_resource` | Recover a single failed resource by name or ID (any provider); response echoes lower-bound `stepsToHealthy` and tells callers to poll until healthy |
 
 ### Simulation state & snapshots
 
 | Tool | Description |
 |---|---|
-| `create_snapshot` | Pin the current simulation state for later comparison |
-| `list_snapshots` | List all pinned snapshots for a simulation |
-| `get_snapshot` | Retrieve a specific pinned snapshot by pin ID |
-| `get_simulation_events` | Retrieve the full ordered event log |
+| `snapshot.create` | Pin the current simulation state for later comparison |
+| `snapshot.list` | List all pinned snapshots for a simulation |
+| `snapshot.get` | Retrieve a specific pinned snapshot by pin ID |
+| `simulation.events` | Retrieve the full ordered event log |
 
 ### Traffic management
 
 | Tool | Description |
 |---|---|
-| `inject_traffic` | Spike traffic (or advance an active ramp pattern) |
-| `create_traffic` | Create a persistent, named traffic pattern (ramp/burst/step/wave/spike) |
-| `update_traffic` | Update an existing traffic pattern by patternId |
-| `delete_traffic` | Delete a traffic pattern permanently |
+| `simulation.inject_traffic` | Spike traffic (or advance an active ramp pattern) |
+| `traffic.create` | Create a persistent, named traffic pattern (ramp/burst/step/wave/spike) |
+| `traffic.update` | Update an existing traffic pattern by patternId |
+| `traffic.delete` | Delete a traffic pattern permanently |
 
 ### Failure management
 
 | Tool | Description |
 |---|---|
-| `inject_failure` | Randomly fail one healthy compute node |
-| `create_failure` | Inject a typed, persistent failure (instance_kill/az_outage/database_overload/network_latency) |
-| `update_failure` | Update a failure injection (e.g. deactivate without deleting) |
-| `delete_failure` | Delete a failure injection permanently |
+| `simulation.inject_failure` | Randomly fail one healthy compute node |
+| `failure.create` | Inject a typed, persistent failure (instance_kill/instance_down/az_outage/database_overload/network_latency/spot_interruption); `spot_interruption` is the bounded 120-second AWS EKS migration lifecycle |
+| `failure.update` | Update a failure injection (e.g. deactivate without deleting) |
+| `failure.delete` | Delete a failure injection permanently |
 
 ### Accuracy validation
 
 | Tool | Description |
 |---|---|
-| `validate_accuracy` | Validate simulation cost and performance accuracy against real-world reference data |
-| `list_benchmarks` | List accuracy benchmark scores for AWS 6th-gen instance types |
+| `benchmark.validate` | Validate simulation cost and performance accuracy against real-world reference data |
+| `benchmark.list` | List accuracy benchmark scores for AWS 6th-gen instance types |
 
 ### AI analysis
 
 | Tool | Description |
 |---|---|
-| `ai_explain` | GPT-powered explanation of current simulation behavior |
-| `ai_troubleshoot` | AI-backed troubleshooting guidance for a described issue |
-| `ai_analyze_bottlenecks` | Detect and rank resource bottlenecks with remediation suggestions |
-| `ai_optimize` | Generate AI-powered infrastructure optimization recommendations |
+| `ai.explain` | GPT-powered explanation of current simulation behavior |
+| `ai.troubleshoot` | AI-backed troubleshooting guidance for a described issue |
+| `ai.analyze` | Detect and rank resource bottlenecks with remediation suggestions |
+| `ai.optimize` | Generate AI-powered infrastructure optimization recommendations |
 
 ### Reinforcement learning
 
 | Tool | Description |
 |---|---|
-| `rl_create_environment` | Wrap a simulation in a Gym-compatible RL environment |
-| `rl_step` | Execute one action and receive observation + reward |
-| `rl_reset` | Reset the environment for a new training episode |
-| `rl_batch_step` | Execute multiple actions in one call (optimised for high-throughput training) |
-| `rl_list_environments` | List all RL environments owned by the API key |
-| `rl_get_observation` | Poll the current observation vector without advancing the episode |
-| `rl_eval_episodes` | Replay ordered action sequences to benchmark a trained policy |
-| `rl_eval_job_status` | Poll the status of an async eval job |
-| `rl_eval_job_results` | Retrieve the full per-episode rewards from a completed eval job |
+| `rl.create` | Wrap a simulation in a Gym-compatible RL environment |
+| `rl.step` | Execute one action and receive observation + reward |
+| `rl.reset` | Reset the environment for a new training episode |
+| `rl.batch_step` | Execute multiple actions in one call (optimised for high-throughput training) |
+| `rl.list` | List all RL environments owned by the API key |
+| `rl.observation` | Poll the current observation vector without advancing the episode |
+| `rl.eval` | Replay ordered action sequences to benchmark a trained policy |
+| `rl.eval_status` | Poll the status of an async eval job |
+| `rl.eval_results` | Retrieve the full per-episode rewards from a completed eval job |
 
 ### Chaos engineering
 
 | Tool | Description |
 |---|---|
-| `list_chaos_scenarios` | Browse pre-built failure scenarios (no auth required) |
-| `chaos_run` | Inject a failure and start a resilience measurement job |
-| `chaos_job_status` | Poll job progress |
-| `chaos_job_results` | Retrieve the full resilience report |
+| `chaos.scenarios` | Browse pre-built failure scenarios (no auth required) |
+| `chaos.run` | Inject a failure and start a resilience measurement job |
+| `chaos.status` | Poll job progress |
+| `chaos.results` | Retrieve the full resilience report |
 
 ### Multi-cloud strategy
 
 | Tool | Description |
 |---|---|
-| `multicloud_explore` | Compare AWS/GCP/Azure/OCI/DigitalOcean strategies |
-| `multicloud_job_status` | Poll job progress |
-| `multicloud_job_results` | Retrieve ranked strategies with cost/latency/lock-in scores |
+| `multicloud.explore` | Compare AWS/GCP/Azure/OCI/DigitalOcean strategies |
+| `multicloud.status` | Poll job progress |
+| `multicloud.results` | Retrieve ranked strategies with cost/latency/lock-in scores |
+| `multicloud.verdict` | Inspect a candidate fingerprint, then evaluate completed caller-attested resilience evidence for those exact test inputs. Ship requires all checks to pass; estimated evidence is insufficient. Reports are not independently verified or persisted. |
 
 ### Predictive scaling
 
 | Tool | Description |
 |---|---|
-| `prediction_validate` | Validate infrastructure against a traffic forecast |
-| `prediction_optimize_thresholds` | Derive recommended autoscaling thresholds from a traffic forecast |
-| `prediction_job_status` | Poll job progress |
-| `prediction_job_results` | Retrieve bottleneck detections and autoscaling thresholds |
+| `prediction.validate` | Validate infrastructure against a traffic forecast |
+| `prediction.optimize_thresholds` | Derive recommended autoscaling thresholds from a traffic forecast |
+| `prediction.status` | Poll job progress |
+| `prediction.results` | Retrieve bottleneck detections and autoscaling thresholds |
 
 ### Infrastructure optimization
 
 | Tool | Description |
 |---|---|
-| `optimization_run` | Start a cost/performance/reliability optimization job |
-| `optimization_job_status` | Poll job progress |
-| `optimization_job_results` | Retrieve ranked recommendations with expected impact |
+| `optimization.run` | Start a cost/performance/reliability optimization job |
+| `optimization.status` | Poll job progress |
+| `optimization.results` | Retrieve ranked recommendations with expected impact |
 
 ## Typical agent workflows
 
 ```
 # RL training loop
-create_simulation → rl_create_environment → [rl_step × N] → (done=true) → rl_reset → repeat
+simulation.create → rl.create → [rl.step × N] → (done=true) → rl.reset → repeat
 
 # Eval a trained policy (async)
-create_simulation → rl_create_environment → rl_eval_episodes → poll rl_eval_job_status → rl_eval_job_results
+simulation.create → rl.create → rl.eval → poll rl.eval_status → rl.eval_results
 
 # Chaos experiment
-create_simulation → chaos_run → poll chaos_job_status → chaos_job_results
+simulation.create → chaos.run → poll chaos.status → chaos.results
 
 # Multi-cloud comparison
-multicloud_explore → poll multicloud_job_status → multicloud_job_results
+multicloud.explore → poll multicloud.status → multicloud.results
 
 # Traffic forecast validation
-create_simulation → prediction_validate → poll prediction_job_status → prediction_job_results
+simulation.create → prediction.validate → poll prediction.status → prediction.results
 
 # Threshold optimisation
-create_simulation → prediction_optimize_thresholds → poll prediction_job_status → prediction_job_results
+simulation.create → prediction.optimize_thresholds → poll prediction.status → prediction.results
 
 # Cost optimization
-create_simulation → optimization_run → poll optimization_job_status → optimization_job_results
+simulation.create → optimization.run → poll optimization.status → optimization.results
 
 # AI-backed analysis and recommendations
-create_simulation → [simulate_step × N] → ai_analyze_bottlenecks → ai_optimize
-create_simulation → inject_failure → ai_troubleshoot
-create_simulation → create_snapshot → [simulate_step × N] → create_snapshot → get_snapshot (diff before/after)
+simulation.create → [simulation.step × N] → ai.analyze → ai.optimize
+simulation.create → simulation.inject_failure → ai.troubleshoot
+simulation.create → snapshot.create → [simulation.step × N] → snapshot.create → snapshot.get (diff before/after)
 
 # Accuracy check before using sim output for production decisions
-create_simulation → [simulate_step × N] → validate_accuracy
+simulation.create → [simulation.step × N] → benchmark.validate
 
 # Typed failure lifecycle
-create_simulation → create_failure → [simulate_step × N] → update_failure (deactivate) → delete_failure
+simulation.create → failure.create → [simulation.step × N] → failure.update (deactivate) → failure.delete
 
 # Persistent traffic pattern lifecycle
-create_simulation → create_traffic (ramp) → [simulate_step × N] → update_traffic → delete_traffic
+simulation.create → traffic.create (ramp) → [simulation.step × N] → traffic.update → traffic.delete
 ```
 
-## Building from source
+## Building from source (for contributors)
+
+This builds the source repository; MCP clients should use the hosted URL above.
 
 ```bash
 git clone https://github.com/canvascloudai/cwm-mcp.git

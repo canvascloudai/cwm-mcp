@@ -1,27 +1,27 @@
 {
   "name": "cwm-mcp",
   "version": "1.1.0",
-  "description": "MCP server for Cloud World Model — expose 49 simulation tools to Claude, Cursor, Windsurf, VS Code, Zed, and any MCP-compatible AI assistant",
+  "description": "Cloud World Model is a hosted streamable HTTP MCP server that lets coding agents simulate cloud infrastructure and estimate cost, latency, errors and resilience before deploying or changing infrastructure.",
   "type": "module",
   "license": "MIT",
   "keywords": [
     "mcp",
-    "model-context-protocol",
-    "cloud",
-    "simulation",
+    "mcp-server",
+    "streamable-http",
     "cloud-simulation",
-    "chaos-engineering",
-    "devops",
-    "ai-agents",
+    "cost-estimation",
+    "cloud-cost",
+    "finops",
+    "multi-cloud",
     "aws",
     "gcp",
     "azure",
     "oci",
     "digitalocean",
-    "claude",
-    "ai-agent",
+    "chaos-engineering",
     "reinforcement-learning",
-    "cloud-world-model"
+    "ai-agents",
+    "world-model"
   ],
   "repository": {
     "type": "git",
@@ -49,7 +49,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "zod": "^3.25.76"
   },
   "devDependencies": {
