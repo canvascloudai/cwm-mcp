@@ -62,10 +62,14 @@ const advertised = (cfg.paymentOptions ?? []).find((o) => o.network === BASE)?.h
 const headers = { [advertised]: Object.values(encoded)[0] };
 if (SIGN_ONLY) { console.log(JSON.stringify({ signOnly: true, sent: false, headerNames: Object.keys(headers), payer: account.address, network: accepted.network, amount: accepted.amount }, null, 2)); process.exit(0); }
 
+// Fetch and body read share one guard. A timeout or error after the response
+// headers arrive (paid.text()) still means the payment may have settled.
 let paid;
-try { paid = await fetch(URL_, { ...init, headers: { ...init.headers, ...headers }, signal: ac() }); }
-catch (e) { console.error(`Outcome UNKNOWN after payment was sent (${e.name}). Do NOT retry; check the payer's USDC transfers on Base.`); process.exit(4); }
-const text = await paid.text();
+let text;
+try {
+  paid = await fetch(URL_, { ...init, headers: { ...init.headers, ...headers }, signal: ac() });
+  text = await paid.text();
+} catch (e) { console.error(`Outcome UNKNOWN after payment was sent (${e.name}). Do NOT retry; check the payer's USDC transfers on Base.`); process.exit(4); }
 const parsed = safeJson(text);
 let settle = null; try { settle = http.getPaymentSettleResponse((n) => paid.headers.get(n)); } catch {}
 const tx = settle?.transaction ?? parsed?.settlement?.transactionHash ?? null;

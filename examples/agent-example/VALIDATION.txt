@@ -16,11 +16,11 @@ EXECUTED (live):
 - request.json validated against live OpenAPI /simulations/stateless: 0 errors. Unpaid POST: 402.
 - Keyless MCP equivalent of request.json fields (sim 7ca1aba9, deleted): accepted; 100→300 RPS stepped.
 - MCP simulation.create description includes the cache-path note (confirmed today).
+- Publication destination chosen: published at github.com/canvascloudai/cwm-mcp under examples/agent-example.
 
 NOT DONE:
 - Real payment through pay_x402.mjs (only dry-run + throwaway sign-only; Kevin's paid run used a hosted client).
 - Solana payment path.
 - Independent cold-builder trial (author's own run does not count).
-- Publication destination not chosen.
 - On-chain lookup of the settlement tx: not independently checked (source = response body).
 - REST schema still has no cacheHitRate / cacheableRequestShare (cache demo remains MCP-only).

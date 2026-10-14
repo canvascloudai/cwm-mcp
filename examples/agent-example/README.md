@@ -76,7 +76,7 @@ Observer: do not coach. Record start/end, first blocking instruction, questions,
 - [x] Copy-paste Base wallet-signing script: `pay_x402.mjs` + pinned `package.json`. Dry-run and throwaway-key sign-only verified; a real payment through *this* script has **not** been run (Kevin's paid run used a hosted client).
 - [ ] Solana payment path.
 - [ ] Independent cold-builder trial (author's own run does not count).
-- [ ] Choose the public examples repository / destination and link from llms.txt + MCP quickstart.
+- [x] Destination chosen: published at github.com/canvascloudai/cwm-mcp under examples/agent-example.
 
 ---
 

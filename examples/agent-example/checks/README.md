@@ -42,12 +42,15 @@ This confirms those field *meanings* are accepted by the engine on the keyless M
 ## Cache MCP sample (already in sample_run/)
 
 - Prior verified run: simulation `b27f9be9`, engine 1.2.23 (see README table).
-- Re-ran `interpret_mcp_cache.py` on the three saved steps: verdict `ship_with_change` matches `sample_run/sim-report.json`.
+- Re-ran `interpret_mcp_cache.py` on the three saved steps: verdict `modeled_fail` (cache_failure only) matches `sample_run/sim-report.json`.
 - Re-ran `interpret_rest.py` on the same three MCP steps: `modeled_fail` with DB CPU / errors / p95 blockers (expected; REST mode is for a single stateless aggregate).
 
 ## Not done
 
-- No Solana payment, no wallet-SDK script in the bundle, no independent cold-builder trial, no publication destination chosen.
+- No Solana payment and no independent cold-builder trial.
+- Real payment through `pay_x402.mjs` has not been run. The script is in the bundle; dry-run and throwaway-key `--sign-only` were tested.
+
+Publication destination chosen: published at github.com/canvascloudai/cwm-mcp under examples/agent-example.
 
 
 ## pay_x402.mjs (Base signing script)

@@ -1,2 +1,4 @@
 node_modules/
 result.json
+__pycache__/
+*.pyc
