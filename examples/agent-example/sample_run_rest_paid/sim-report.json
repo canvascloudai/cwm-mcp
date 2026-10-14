@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 2,
+  "evidence": "modeled",
+  "verdict": "modeled_pass",
+  "mergeAuthorized": false,
+  "slo": {
+    "errorRatePct": 1,
+    "p95Ms": 200,
+    "costPerHour": 5
+  },
+  "phases": [
+    {
+      "errorRatePct": 0,
+      "p95Ms": 42,
+      "costPerHour": 0.61
+    }
+  ],
+  "blockingReasons": [],
+  "evidenceGaps": [],
+  "coverage": {
+    "level": "full",
+    "modeledCount": 5,
+    "estimatedCount": 0,
+    "knownGapCount": 0,
+    "notObservableCategories": [],
+    "structuralLimitations": [
+      "IAM",
+      "CloudWatch",
+      "AWS Support",
+      "Savings Plans",
+      "Reserved Instance pricing",
+      "VPC endpoints",
+      "Secrets Manager",
+      "KMS"
+    ],
+    "modeledCostShareOfTotal": 1.0001,
+    "billingPolicyCoverage": {
+      "complete": true,
+      "status": "complete",
+      "exclusions": []
+    },
+    "resources": [
+      {
+        "name": "Web server",
+        "resourceType": "compute",
+        "costFidelity": "modeled",
+        "behaviourFidelity": "modeled",
+        "shareOfSimulatedCost": 0.0638,
+        "coverageBasis": "deterministic"
+      },
+      {
+        "name": "aws-server-02",
+        "resourceType": "compute",
+        "costFidelity": "modeled",
+        "behaviourFidelity": "modeled",
+        "shareOfSimulatedCost": 0.0638,
+        "coverageBasis": "deterministic"
+      },
+      {
+        "name": "aws-server-03",
+        "resourceType": "compute",
+        "costFidelity": "modeled",
+        "behaviourFidelity": "modeled",
+        "shareOfSimulatedCost": 0.0638,
+        "coverageBasis": "deterministic"
+      },
+      {
+        "name": "aws-server-04",
+        "resourceType": "compute",
+        "costFidelity": "modeled",
+        "behaviourFidelity": "modeled",
+        "shareOfSimulatedCost": 0.0638,
+        "coverageBasis": "deterministic"
+      },
+      {
+        "name": "Network egress",
+        "resourceType": "cost_category",
+        "costFidelity": "modeled",
+        "behaviourFidelity": "modeled",
+        "shareOfSimulatedCost": 0.7449,
+        "coverageBasis": "deterministic"
+      }
+    ]
+  },
+  "diagnostics": {
+    "latencyP99Ms": 306,
+    "p99Note": "Diagnostic only, not gated (P99 uncalibrated).",
+    "warningEvents": [
+      {
+        "step": 2,
+        "severity": "warning",
+        "message": "Web server CPU usage exceeded 80% threshold"
+      },
+      {
+        "step": 2,
+        "severity": "warning",
+        "message": "ML detected critical bottleneck: Web server - CPU saturation will cause 40ms additional latency"
+      }
+    ],
+    "settlement": {
+      "status": "confirmed",
+      "transactionHash": "0x4ef1ab58ce1b7ec5c9bd7378974e025973e377cde7d28970aa57a77888c4aeab"
+    }
+  },
+  "scope": "REST final aggregate only; not every intermediate step",
+  "recommendation": "Review thresholds and evidence limits. Test proposed remedies separately."
+}

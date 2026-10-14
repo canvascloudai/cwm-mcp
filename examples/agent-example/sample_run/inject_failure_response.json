@@ -1,0 +1,846 @@
+<cursor_untrusted_data_1337 source="CallDynamicTool">
+
+{
+  "simulation": {
+    "appWeight": "typical",
+    "appWeightDefaulted": true,
+    "predictionEvidence": {
+      "note": "typical application; basis provenance, not observed simulated output. Assumption intervals, not statistical confidence intervals. Owned typical fit applies only to the matching workload/topology within 20–300 RPS (20/100/200 fit, 300 independent holdout). Generic fallback is diagnostic modeled output, not validated critical/saturation evidence; traffic alone does not establish calibration. Assumed in-VPC/internal-LB baseline; other provider/network paths are not measured. P99: uncalibrated (generic P99, no owned in-VPC fit); not an owned workload fit; generic app-weight estimates are unverified for this application.",
+      "appCpu": {
+        "low": 14.88825,
+        "high": 100,
+        "central": 59.553
+      },
+      "version": 1,
+      "appWeight": "typical",
+      "loadScope": "beyond measured load",
+      "sourceIds": [
+        "catalog:aws:m5.large",
+        "cwm-industry-guidance-placeholder-v1",
+        "cwm-generic-p99-unverified"
+      ],
+      "formulaIds": [
+        "app-weight-v1",
+        "app-host-cpu-vcpu-v1",
+        "internal-lb-percentile-v1",
+        "cwm-generic-p99-unverified"
+      ],
+      "latencyP50": {
+        "low": 3,
+        "high": 36,
+        "central": 12,
+        "evidenceLevel": "reference estimate"
+      },
+      "latencyP95": {
+        "low": 8.5,
+        "high": 102,
+        "central": 34,
+        "evidenceLevel": "reference estimate"
+      },
+      "latencyP99": {
+        "low": 477.5,
+        "high": 5730,
+        "central": 1910,
+        "evidenceLevel": "reference estimate"
+      },
+      "evidenceLevel": "reference estimate",
+      "legacyGeneric": false,
+      "appCpuByResource": [
+        {
+          "low": 14.88825,
+          "high": 100,
+          "central": 59.553,
+          "resourceId": "web-1",
+          "evidenceLevel": "reference estimate",
+          "legacyGeneric": false
+        },
+        {
+          "low": 14.88825,
+          "high": 100,
+          "central": 59.553,
+          "resourceId": "web-2",
+          "evidenceLevel": "reference estimate",
+          "legacyGeneric": false
+        },
+        {
+          "low": 14.88825,
+          "high": 100,
+          "central": 59.553,
+          "resourceId": "web-3",
+          "evidenceLevel": "reference estimate",
+          "legacyGeneric": false
+        },
+        {
+          "low": 14.88825,
+          "high": 100,
+          "central": 59.553,
+          "resourceId": "auto-42-0",
+          "evidenceLevel": "reference estimate",
+          "legacyGeneric": false
+        },
+        {
+          "low": 14.88825,
+          "high": 100,
+          "central": 59.553,
+          "resourceId": "auto-1730626605-1",
+          "evidenceLevel": "reference estimate",
+          "legacyGeneric": false
+        },
+        {
+          "low": 14.88825,
+          "high": 100,
+          "central": 59.553,
+          "resourceId": "auto-3320827358-2",
+          "evidenceLevel": "reference estimate",
+          "legacyGeneric": false
+        }
+      ],
+      "appWeightDefaulted": true,
+      "latencyPercentileStatus": "modeled"
+    },
+    "id": "b27f9be9-1e51-4d8b-8398-5ec8bb9aa0aa",
+    "name": "agent-example v3b: cache path + web->db",
+    "resources": [
+      {
+        "x": 0,
+        "y": 0,
+        "id": "db",
+        "name": "postgres",
+        "type": "database",
+        "status": "healthy",
+        "cpuUsage": 30.6,
+        "metadata": {
+          "_appWeightLoadStatus": true
+        },
+        "provider": "aws",
+        "isRoutable": true,
+        "characteristics": {
+          "size": "db.r5.large",
+          "costMultiplier": 1
+        },
+        "availabilityState": "available",
+        "recoveryProgress": {
+          "state": "healthy",
+          "parkWindow": {
+            "totalSteps": 0,
+            "completedSteps": 0,
+            "remainingSteps": 0
+          },
+          "cooldown": {
+            "target": null,
+            "completedSteps": 0,
+            "requiredSteps": 0,
+            "remainingSteps": 0
+          }
+        }
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "id": "lb",
+        "name": "Application Load Balancer",
+        "type": "network",
+        "status": "healthy",
+        "cpuUsage": 4.6,
+        "metadata": {
+          "lbUtil": 1.5,
+          "lbRoutedRps": 900,
+          "lbTargetErrorRate": 4.609,
+          "_appWeightLoadStatus": true
+        },
+        "provider": "aws",
+        "characteristics": {
+          "serviceFamily": "alb",
+          "costMultiplier": 1
+        },
+        "recoveryProgress": {
+          "state": "healthy",
+          "parkWindow": {
+            "totalSteps": 0,
+            "completedSteps": 0,
+            "remainingSteps": 0
+          },
+          "cooldown": {
+            "target": null,
+            "completedSteps": 0,
+            "requiredSteps": 0,
+            "remainingSteps": 0
+          }
+        }
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "id": "redis",
+        "name": "redis",
+        "type": "cache",
+        "status": "critical",
+        "metadata": {
+          "_quickCacheFailure": {
+            "injectedAtStep": 7
+          },
+          "_appWeightLoadStatus": true
+        },
+        "provider": "aws",
+        "characteristics": {
+          "size": "cache.t3.micro",
+          "cacheHitRate": 0.8,
+          "serviceFamily": "elasticache",
+          "costMultiplier": 1,
+          "cacheableRequestShare": 1
+        },
+        "recoveryBlockedReason": "active_failure",
+        "recoveryProgress": {
+          "state": "blocked",
+          "parkWindow": {
+            "totalSteps": 0,
+            "completedSteps": 0,
+            "remainingSteps": 0
+          },
+          "cooldown": {
+            "target": "warning",
+            "completedSteps": 0,
+            "requiredSteps": 4,
+            "remainingSteps": 4
+          }
+        }
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "id": "web-1",
+        "name": "web-1",
+        "type": "compute",
+        "status": "warning",
+        "cpuUsage": 59.553,
+        "metadata": {
+          "_appWeightLoadStatus": true,
+          "_computeFailureSmoothed": 0,
+          "_computeNearCapacityLatencySteps": 0
+        },
+        "provider": "aws",
+        "isRoutable": true,
+        "characteristics": {
+          "size": "m5.large",
+          "capacityRps": 500,
+          "costMultiplier": 1
+        },
+        "availabilityState": "degraded",
+        "recoveryProgress": {
+          "state": "cooling_down",
+          "parkWindow": {
+            "totalSteps": 0,
+            "completedSteps": 0,
+            "remainingSteps": 0
+          },
+          "cooldown": {
+            "target": "healthy",
+            "completedSteps": 0,
+            "requiredSteps": 3,
+            "remainingSteps": 3
+          }
+        }
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "id": "web-2",
+        "name": "web-2",
+        "type": "compute",
+        "status": "warning",
+        "cpuUsage": 59.553,
+        "metadata": {
+          "_appWeightLoadStatus": true,
+          "_computeNearCapacityLatencySteps": 0
+        },
+        "provider": "aws",
+        "isRoutable": true,
+        "characteristics": {
+          "size": "m5.large",
+          "capacityRps": 500,
+          "costMultiplier": 1
+        },
+        "availabilityState": "degraded",
+        "recoveryProgress": {
+          "state": "cooling_down",
+          "parkWindow": {
+            "totalSteps": 0,
+            "completedSteps": 0,
+            "remainingSteps": 0
+          },
+          "cooldown": {
+            "target": "healthy",
+            "completedSteps": 0,
+            "requiredSteps": 3,
+            "remainingSteps": 3
+          }
+        }
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "id": "web-3",
+        "name": "web-3",
+        "type": "compute",
+        "status": "warning",
+        "cpuUsage": 59.553,
+        "metadata": {
+          "_appWeightLoadStatus": true,
+          "_computeNearCapacityLatencySteps": 0
+        },
+        "provider": "aws",
+        "isRoutable": true,
+        "characteristics": {
+          "size": "m5.large",
+          "capacityRps": 500,
+          "costMultiplier": 1
+        },
+        "availabilityState": "degraded",
+        "recoveryProgress": {
+          "state": "cooling_down",
+          "parkWindow": {
+            "totalSteps": 0,
+            "completedSteps": 0,
+            "remainingSteps": 0
+          },
+          "cooldown": {
+            "target": "healthy",
+            "completedSteps": 0,
+            "requiredSteps": 3,
+            "remainingSteps": 3
+          }
+        }
+      },
+      {
+        "x": 212,
+        "y": 140,
+        "id": "auto-42-0",
+        "name": "aws-server-04",
+        "type": "compute",
+        "status": "warning",
+        "cpuUsage": 59.553,
+        "metadata": {
+          "_appWeightLoadStatus": true,
+          "computeWarmupStepsSinceStart": 2,
+          "_computeNearCapacityLatencySteps": 0
+        },
+        "provider": "aws",
+        "isRoutable": true,
+        "characteristics": {
+          "size": "m5.large",
+          "capacityRps": 500,
+          "warmupSteps": 2,
+          "costMultiplier": 1,
+          "warmupSeverity": 0.4
+        },
+        "availabilityState": "degraded",
+        "recoveryProgress": {
+          "state": "cooling_down",
+          "parkWindow": {
+            "totalSteps": 0,
+            "completedSteps": 0,
+            "remainingSteps": 0
+          },
+          "cooldown": {
+            "target": "healthy",
+            "completedSteps": 0,
+            "requiredSteps": 3,
+            "remainingSteps": 3
+          }
+        }
+      },
+      {
+        "x": 424,
+        "y": 140,
+        "id": "auto-1730626605-1",
+        "name": "aws-server-05",
+        "type": "compute",
+        "status": "healthy",
+        "cpuUsage": 59.553,
+        "metadata": {
+          "computeWarmupStepsSinceStart": 0
+        },
+        "provider": "aws",
+        "isRoutable": false,
+        "characteristics": {
+          "size": "m5.large",
+          "capacityRps": 500,
+          "warmupSteps": 2,
+          "costMultiplier": 1,
+          "warmupSeverity": 0.4
+        },
+        "availabilityState": "unavailable",
+        "recoveryProgress": {
+          "state": "healthy",
+          "parkWindow": {
+            "totalSteps": 0,
+            "completedSteps": 0,
+            "remainingSteps": 0
+          },
+          "cooldown": {
+            "target": null,
+            "completedSteps": 0,
+            "requiredSteps": 0,
+            "remainingSteps": 0
+          }
+        }
+      },
+      {
+        "x": 212,
+        "y": 280,
+        "id": "auto-3320827358-2",
+        "name": "aws-server-06",
+        "type": "compute",
+        "status": "healthy",
+        "cpuUsage": 59.553,
+        "metadata": {
+          "computeWarmupStepsSinceStart": 0
+        },
+        "provider": "aws",
+        "isRoutable": false,
+        "characteristics": {
+          "size": "m5.large",
+          "capacityRps": 500,
+          "warmupSteps": 2,
+          "costMultiplier": 1,
+          "warmupSeverity": 0.4
+        },
+        "availabilityState": "unavailable",
+        "recoveryProgress": {
+          "state": "healthy",
+          "parkWindow": {
+            "totalSteps": 0,
+            "completedSteps": 0,
+            "remainingSteps": 0
+          },
+          "cooldown": {
+            "target": null,
+            "completedSteps": 0,
+            "requiredSteps": 0,
+            "remainingSteps": 0
+          }
+        }
+      }
+    ],
+    "connections": [
+      {
+        "id": "connection:lb->web-1:0",
+        "sourceId": "lb",
+        "targetId": "web-1"
+      },
+      {
+        "id": "connection:lb->web-2:0",
+        "sourceId": "lb",
+        "targetId": "web-2"
+      },
+      {
+        "id": "connection:lb->web-3:0",
+        "sourceId": "lb",
+        "targetId": "web-3"
+      },
+      {
+        "id": "connection:redis->db:0",
+        "sourceId": "redis",
+        "targetId": "db"
+      },
+      {
+        "id": "connection:web-1->db:0",
+        "sourceId": "web-1",
+        "targetId": "db"
+      },
+      {
+        "id": "connection:web-1->redis:0",
+        "sourceId": "web-1",
+        "targetId": "redis"
+      },
+      {
+        "id": "connection:web-2->db:0",
+        "sourceId": "web-2",
+        "targetId": "db"
+      },
+      {
+        "id": "connection:web-2->redis:0",
+        "sourceId": "web-2",
+        "targetId": "redis"
+      },
+      {
+        "id": "connection:web-3->db:0",
+        "sourceId": "web-3",
+        "targetId": "db"
+      },
+      {
+        "id": "connection:web-3->redis:0",
+        "sourceId": "web-3",
+        "targetId": "redis"
+      },
+      {
+        "id": "conn-lb-auto-42-0",
+        "sourceId": "lb",
+        "targetId": "auto-42-0"
+      },
+      {
+        "id": "conn-auto-42-0-db",
+        "sourceId": "auto-42-0",
+        "targetId": "db"
+      },
+      {
+        "id": "conn-auto-42-0-redis",
+        "sourceId": "auto-42-0",
+        "targetId": "redis"
+      },
+      {
+        "id": "conn-lb-auto-1730626605-1",
+        "sourceId": "lb",
+        "targetId": "auto-1730626605-1"
+      },
+      {
+        "id": "conn-auto-1730626605-1-db",
+        "sourceId": "auto-1730626605-1",
+        "targetId": "db"
+      },
+      {
+        "id": "conn-auto-1730626605-1-redis",
+        "sourceId": "auto-1730626605-1",
+        "targetId": "redis"
+      },
+      {
+        "id": "conn-lb-auto-3320827358-2",
+        "sourceId": "lb",
+        "targetId": "auto-3320827358-2"
+      },
+      {
+        "id": "conn-auto-3320827358-2-db",
+        "sourceId": "auto-3320827358-2",
+        "targetId": "db"
+      },
+      {
+        "id": "conn-auto-3320827358-2-redis",
+        "sourceId": "auto-3320827358-2",
+        "targetId": "redis"
+      }
+    ],
+    "currentTime": 7,
+    "traffic": 900,
+    "isRunning": false,
+    "playbackSpeed": 1,
+    "lastCostPerHour": 2.19,
+    "crossedCostThresholds": [],
+    "lastScaleTime": 6,
+    "cooldownUntil": 306,
+    "scalingHistory": [
+      {
+        "action": "scale_out",
+        "reason": "Creation sizing: 3 → 4 VMs for 600 RPS (~150 RPS/VM selected load; ~176 RPS/VM and 706 RPS fleet capacity at 70% CPU runtime scale-out threshold and configured throughput target); no creation cooldown",
+        "metrics": {
+          "cpu": 59.553,
+          "latency": 38.02600942108828,
+          "throughputUtilization": 40
+        },
+        "provider": "aws",
+        "timestamp": 0,
+        "resourceName": "aws-server-04",
+        "instancesAdded": 1
+      },
+      {
+        "action": "scale_out",
+        "reason": "CPU: 89.2%; post-scale CPU: 59.6%; cooldown 300 simulated seconds (1 second/step)",
+        "metrics": {
+          "cpu": 59.553,
+          "latency": 33.90511829770226,
+          "throughputUtilization": 45
+        },
+        "provider": "aws",
+        "timestamp": 6,
+        "resourceName": "aws-server-05, aws-server-06",
+        "instancesAdded": 2
+      }
+    ],
+    "apiKeyId": "b9cab705-54df-4df2-8702-367285a81326",
+    "demoStepCount": 0,
+    "isRlClone": false,
+    "seed": 42,
+    "engineVersion": "1.2.23",
+    "rngAlgorithm": "mulberry32",
+    "normalizationReceipt": {
+      "version": "gke-normalization-receipt/v2",
+      "hpaAudit": {
+        "provider": "aws",
+        "defaulted": true,
+        "suppliedField": null,
+        "targetSupplied": false,
+        "resourceCategory": "other",
+        "defaultExplanation": "No CPU target was supplied; the AWS provider default is 70% scale-out / 30% scale-in.",
+        "requestedTargetCpu": null,
+        "effectiveScaleInCpuPercent": 30,
+        "effectiveScaleOutCpuPercent": 70
+      },
+      "kubernetes": [],
+      "modelingScope": {
+        "memoryUsage": "metrics.memoryUsage is synthetic aggregate utilization. It cannot be converted into per-pod GiB, working-set demand, OOM timing, cgroup limits, eviction, or OOMKill behavior. Native Kubernetes manifest requests/limits are observed configuration only; an explicit runtimeMemoryProfile (compute) or kubernetesMemoryProfile (kubernetes) is required to model per-replica memory-pressure/OOM assumptions. Runtime results are reported each step in metrics.kubernetesMemory with an explicit evaluationStatus, never inferred from memoryUsage, CPU, RPS, requests, or limits. Multi-pool clusters (nodePools) are evaluated per node pool: each pool declares its own kubernetesMemoryProfile and gets its own row (poolId-tagged, sharing the cluster's resourceId); a pool without one reports evaluationStatus \"not_evaluated\" independently of its siblings.",
+        "controlPlane": "CWM includes a control-plane management fee where applicable as a cost-only term. It does not simulate or report GKE control-plane CPU, master/API throttling, or control-plane cooldown behavior.",
+        "kubernetesCpuHpa": "The optional kubernetesCpuHpa model derives a per-pod CPU observation from routed RPS and an explicit millicores-per-RPS demand value, then reports bounded Utilization/AverageValue replica recommendations. A reviewed CPU/RPS measurement series may be included as calibration evidence and must produce the declared demand value. It updates workload replicas only, not worker nodes or live clusters, and does not claim Kubernetes HPA controller parity. CPU request and demand are labeled ASSUMED unless supporting evidence is supplied; no values are inferred when omitted.",
+        "kubernetesWorkerCapacity": "CWM models generic worker-node capacity, CPU/utilization, load saturation, worker autoscaling, and worker recovery/cooldown decisions only; it does not model pod scheduling, readiness, queues, or control-plane CPU."
+      },
+      "creationPolicy": {
+        "warmup": {
+          "steps": 5,
+          "reason": "shared API/UI creation warm-up",
+          "applied": true
+        },
+        "canonicalOrdering": "resource-id, node-pool-name, connection endpoints"
+      }
+    },
+    "replayInputSnapshot": {
+      "finalized": true,
+      "resources": [
+        {
+          "x": 0,
+          "y": 0,
+          "id": "db",
+          "name": "postgres",
+          "type": "database",
+          "status": "healthy",
+          "cpuUsage": 19.6,
+          "metadata": {
+            "_appWeightLoadStatus": true
+          },
+          "provider": "aws",
+          "characteristics": {
+            "size": "db.r5.large",
+            "costMultiplier": 1
+          }
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "id": "lb",
+          "name": "Application Load Balancer",
+          "type": "network",
+          "status": "healthy",
+          "cpuUsage": 3.3,
+          "metadata": {
+            "lbUtil": 1,
+            "lbRoutedRps": 600,
+            "lbTargetErrorRate": 0,
+            "_appWeightLoadStatus": true
+          },
+          "provider": "aws",
+          "characteristics": {
+            "serviceFamily": "alb",
+            "costMultiplier": 1
+          }
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "id": "redis",
+          "name": "redis",
+          "type": "cache",
+          "status": "healthy",
+          "metadata": {
+            "_appWeightLoadStatus": true
+          },
+          "provider": "aws",
+          "characteristics": {
+            "size": "cache.t3.micro",
+            "cacheHitRate": 0.8,
+            "serviceFamily": "elasticache",
+            "costMultiplier": 1,
+            "cacheableRequestShare": 1
+          }
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "id": "web-1",
+          "name": "web-1",
+          "type": "compute",
+          "status": "healthy",
+          "cpuUsage": 59.553,
+          "metadata": {
+            "_appWeightLoadStatus": true,
+            "_computeFailureSmoothed": 0,
+            "_computeNearCapacityLatencySteps": 0
+          },
+          "provider": "aws",
+          "characteristics": {
+            "size": "m5.large",
+            "capacityRps": 500,
+            "costMultiplier": 1
+          }
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "id": "web-2",
+          "name": "web-2",
+          "type": "compute",
+          "status": "healthy",
+          "cpuUsage": 59.553,
+          "metadata": {
+            "_appWeightLoadStatus": true,
+            "_computeNearCapacityLatencySteps": 0
+          },
+          "provider": "aws",
+          "characteristics": {
+            "size": "m5.large",
+            "capacityRps": 500,
+            "costMultiplier": 1
+          }
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "id": "web-3",
+          "name": "web-3",
+          "type": "compute",
+          "status": "healthy",
+          "cpuUsage": 59.553,
+          "metadata": {
+            "_appWeightLoadStatus": true,
+            "_computeNearCapacityLatencySteps": 0
+          },
+          "provider": "aws",
+          "characteristics": {
+            "size": "m5.large",
+            "capacityRps": 500,
+            "costMultiplier": 1
+          }
+        },
+        {
+          "x": 212,
+          "y": 140,
+          "id": "auto-42-0",
+          "name": "aws-server-04",
+          "type": "compute",
+          "status": "healthy",
+          "cpuUsage": 59.553,
+          "metadata": {
+            "_appWeightLoadStatus": true,
+            "computeWarmupStepsSinceStart": 2,
+            "_computeNearCapacityLatencySteps": 0
+          },
+          "provider": "aws",
+          "characteristics": {
+            "size": "m5.large",
+            "capacityRps": 500,
+            "warmupSteps": 2,
+            "costMultiplier": 1,
+            "warmupSeverity": 0.4
+          }
+        }
+      ],
+      "connections": [
+        {
+          "id": "connection:lb->web-1:0",
+          "sourceId": "lb",
+          "targetId": "web-1"
+        },
+        {
+          "id": "connection:lb->web-2:0",
+          "sourceId": "lb",
+          "targetId": "web-2"
+        },
+        {
+          "id": "connection:lb->web-3:0",
+          "sourceId": "lb",
+          "targetId": "web-3"
+        },
+        {
+          "id": "connection:redis->db:0",
+          "sourceId": "redis",
+          "targetId": "db"
+        },
+        {
+          "id": "connection:web-1->db:0",
+          "sourceId": "web-1",
+          "targetId": "db"
+        },
+        {
+          "id": "connection:web-1->redis:0",
+          "sourceId": "web-1",
+          "targetId": "redis"
+        },
+        {
+          "id": "connection:web-2->db:0",
+          "sourceId": "web-2",
+          "targetId": "db"
+        },
+        {
+          "id": "connection:web-2->redis:0",
+          "sourceId": "web-2",
+          "targetId": "redis"
+        },
+        {
+          "id": "connection:web-3->db:0",
+          "sourceId": "web-3",
+          "targetId": "db"
+        },
+        {
+          "id": "connection:web-3->redis:0",
+          "sourceId": "web-3",
+          "targetId": "redis"
+        },
+        {
+          "id": "conn-lb-auto-42-0",
+          "sourceId": "lb",
+          "targetId": "auto-42-0"
+        },
+        {
+          "id": "conn-auto-42-0-db",
+          "sourceId": "auto-42-0",
+          "targetId": "db"
+        },
+        {
+          "id": "conn-auto-42-0-redis",
+          "sourceId": "auto-42-0",
+          "targetId": "redis"
+        }
+      ],
+      "trafficPatterns": []
+    },
+    "createdAt": "2026-10-14T02:27:02.011Z",
+    "updatedAt": "2026-10-14T02:27:28.856Z"
+  },
+  "event": {
+    "simulationId": "b27f9be9-1e51-4d8b-8398-5ec8bb9aa0aa",
+    "timestamp": "2026-10-14T02:27:28.679Z",
+    "type": "cache_failure",
+    "severity": "error",
+    "message": "Cache failure injected: redis is unavailable; all cacheable requests now miss and flow to the database",
+    "resource": "redis",
+    "metadata": {
+      "kind": "cache_failure",
+      "failureLifecycle": "injected",
+      "origin": "injected",
+      "injectedFailure": true,
+      "failureType": "cache_failure",
+      "resourceId": "redis",
+      "targetResourceId": "redis",
+      "simulationStep": 7
+    }
+  },
+  "resolvedResourceId": "redis",
+  "resolvedResourceName": "redis",
+  "previousHealth": "healthy",
+  "healthyNodes": [
+    {
+      "id": "db",
+      "name": "postgres"
+    },
+    {
+      "id": "lb",
+      "name": "Application Load Balancer"
+    },
+    {
+      "id": "auto-1730626605-1",
+      "name": "aws-server-05"
+    },
+    {
+      "id": "auto-3320827358-2",
+      "name": "aws-server-06"
+    }
+  ]
+}
+
+</cursor_untrusted_data_1337>

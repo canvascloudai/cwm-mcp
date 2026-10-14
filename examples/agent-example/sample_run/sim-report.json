@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 2,
+  "evidence": "modeled",
+  "verdict": "modeled_fail",
+  "mergeAuthorized": false,
+  "slo": {
+    "errorRatePct": 1.0,
+    "p95Ms": 200,
+    "dbCpuPct": 85,
+    "costPerHour": 5.0
+  },
+  "phases": [
+    {
+      "phase": "baseline",
+      "offeredRps": 600,
+      "goodputRps": 600,
+      "errorRatePct": 0,
+      "p95Ms": 38,
+      "costPerHour": 1.52,
+      "dbCpuPct": 18.4,
+      "cacheHitRps": 480,
+      "cacheMissRps": 120
+    },
+    {
+      "phase": "peak",
+      "offeredRps": 900,
+      "goodputRps": 900,
+      "errorRatePct": 0,
+      "p95Ms": 34,
+      "costPerHour": 2.19,
+      "dbCpuPct": 30.6,
+      "cacheHitRps": 720,
+      "cacheMissRps": 180
+    },
+    {
+      "phase": "cache_failure",
+      "offeredRps": 900,
+      "goodputRps": 151,
+      "errorRatePct": 83.184,
+      "p95Ms": 1284,
+      "costPerHour": 1.03,
+      "dbCpuPct": 100,
+      "cacheHitRps": 0,
+      "cacheMissRps": 900
+    }
+  ],
+  "failedPhases": [
+    "cache_failure"
+  ],
+  "blockingReasons": [
+    "cache_failure: errorRatePct 83.184 exceeds 1.0",
+    "cache_failure: p95Ms 1284 exceeds 200",
+    "cache_failure: dbCpuPct 100 exceeds 85"
+  ],
+  "evidenceGaps": [],
+  "changeRecommendation": "Healthy at baseline and peak, but losing the cache breaches SLOs. Candidate remedies to TEST in a follow-up simulation (not confirmed fixes): more DB headroom, a read replica, serve-stale or a circuit breaker on cache loss.",
+  "scope": "Supplied MCP phases only; p99 not gated (uncalibrated)."
+}
