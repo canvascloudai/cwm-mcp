@@ -1,0 +1,28 @@
+{
+  "seed": 42,
+  "steps": 3,
+  "resources": [
+    {
+      "id": "web-1",
+      "name": "Web server",
+      "type": "compute",
+      "provider": "aws",
+      "characteristics": {
+        "instanceType": "t3.medium",
+        "autoscaling": true
+      }
+    }
+  ],
+  "traffic": {
+    "initialRps": 100,
+    "change": {
+      "atStep": 2,
+      "targetRps": 300
+    }
+  },
+  "autoscaling": {
+    "minInstances": 1,
+    "maxInstances": 4,
+    "targetCpuPercent": 70
+  }
+}

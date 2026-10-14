@@ -1,0 +1,26 @@
+VALIDATION — 2026-10-14 (all times ET)
+
+EXECUTED (live):
+- Paid x402 REST of request.json (~10:31 AM, Kevin, tryponcho/AgentCash): HTTP 200, $0.003 USDC on Base, settlement confirmed.
+  Tx 0x4ef1ab58ce1b7ec5c9bd7378974e025973e377cde7d28970aa57a77888c4aeab from body.settlement.transactionHash (client does not expose PAYMENT-RESPONSE).
+  Body + report: sample_run_rest_paid/. interpret_rest.py → modeled_pass.
+- MCP cache before/after: simulation b27f9be9, engine 1.2.23, sample_run/. 600/900 RPS: 0% errors, DB CPU 18.4%/30.6%; Redis failed: 83.2% errors, p95 1284 ms, DB 100%.
+  interpret_mcp_cache.py (requires 3 phases): full run → modeled_fail (cache_failure only); baseline-only → inconclusive; no args / empty → inconclusive.
+- pay_x402.mjs (Base, @x402/* 2.28.0 + viem 2.57.6, pinned):
+  - No key: refuses (exit 2).
+  - --dry-run: fetches live 402, lists Base+Solana accepts, reports 1 eligible under $0.01 cap (exit 0). Never sends a payment.
+  - --sign-only with a throwaway key: signs a Base USDC payload, remaps the header to advertised X-PAYMENT, prints header names / payer / amount; does NOT broadcast (exit 0). Private key never appeared in stdout.
+  - Cap $0.001 with a throwaway key: refuses (no option within cap).
+  - A real payment through pay_x402.mjs has NOT been run.
+- GET /api/billing/x402/config: enabled; prices and headers as above. Snapshot: checks/x402_config.json.
+- request.json validated against live OpenAPI /simulations/stateless: 0 errors. Unpaid POST: 402.
+- Keyless MCP equivalent of request.json fields (sim 7ca1aba9, deleted): accepted; 100→300 RPS stepped.
+- MCP simulation.create description includes the cache-path note (confirmed today).
+- Publication destination chosen: published at github.com/canvascloudai/cwm-mcp under examples/agent-example.
+
+NOT DONE:
+- Real payment through pay_x402.mjs (only dry-run + throwaway sign-only; Kevin's paid run used a hosted client).
+- Solana payment path.
+- Independent cold-builder trial (author's own run does not count).
+- On-chain lookup of the settlement tx: not independently checked (source = response body).
+- REST schema still has no cacheHitRate / cacheableRequestShare (cache demo remains MCP-only).

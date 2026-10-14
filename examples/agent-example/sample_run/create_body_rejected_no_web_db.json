@@ -1,0 +1,101 @@
+{
+ "body": {
+  "name": "agent-example v3",
+  "seed": 42,
+  "traffic": 600,
+  "resources": [
+   {
+    "id": "lb",
+    "type": "network",
+    "name": "Application Load Balancer",
+    "provider": "aws",
+    "characteristics": {
+     "serviceFamily": "alb"
+    }
+   },
+   {
+    "id": "web-1",
+    "type": "compute",
+    "name": "web-1",
+    "provider": "aws",
+    "characteristics": {
+     "size": "m5.large",
+     "capacityRps": 500
+    }
+   },
+   {
+    "id": "web-2",
+    "type": "compute",
+    "name": "web-2",
+    "provider": "aws",
+    "characteristics": {
+     "size": "m5.large",
+     "capacityRps": 500
+    }
+   },
+   {
+    "id": "web-3",
+    "type": "compute",
+    "name": "web-3",
+    "provider": "aws",
+    "characteristics": {
+     "size": "m5.large",
+     "capacityRps": 500
+    }
+   },
+   {
+    "id": "redis",
+    "type": "cache",
+    "name": "redis",
+    "provider": "aws",
+    "characteristics": {
+     "serviceFamily": "elasticache",
+     "size": "cache.t3.micro",
+     "cacheHitRate": 0.8,
+     "cacheableRequestShare": 1
+    }
+   },
+   {
+    "id": "db",
+    "type": "database",
+    "name": "postgres",
+    "provider": "aws",
+    "characteristics": {
+     "size": "db.r5.large"
+    }
+   }
+  ],
+  "connections": [
+   {
+    "sourceId": "lb",
+    "targetId": "web-1"
+   },
+   {
+    "sourceId": "lb",
+    "targetId": "web-2"
+   },
+   {
+    "sourceId": "lb",
+    "targetId": "web-3"
+   },
+   {
+    "sourceId": "web-1",
+    "targetId": "redis"
+   },
+   {
+    "sourceId": "web-2",
+    "targetId": "redis"
+   },
+   {
+    "sourceId": "web-3",
+    "targetId": "redis"
+   },
+   {
+    "sourceId": "redis",
+    "targetId": "db"
+   }
+  ]
+ },
+ "result": "HTTP 400: Declared cache misses and bypass requests require a connected relational database target from the request producer.",
+ "result_2026-10-13_2300ET": "HTTP 400: Cache misses and bypass requests need a direct request-producer-to-database connection. Missing direct connection(s): web-1 -> postgres (db), web-2 -> postgres (db), web-3 -> postgres (db). Example: {\"sourceId\":\"web-1\",\"targetId\":\"db\"}. Keep the existing app-server-to-cache and cache-to-database edges."
+}

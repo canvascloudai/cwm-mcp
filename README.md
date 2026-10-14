@@ -259,6 +259,10 @@ simulation.create → failure.create → [simulation.step × N] → failure.upda
 simulation.create → traffic.create (ramp) → [simulation.step × N] → traffic.update → traffic.delete
 ```
 
+## Examples
+
+- [examples/agent-example](examples/agent-example/): simulate an infra change before deploy, over REST with x402 or keyless MCP.
+
 ## Building from source (for contributors)
 
 This builds the source repository; MCP clients should use the hosted URL above.
